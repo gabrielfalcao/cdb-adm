@@ -1,0 +1,71 @@
+name: "Continuous Integration"
+
+on:
+  - push
+  - pull_request
+
+env:
+  CARGO_TERM_COLOR: "always"
+  TZ: "UTC"
+  RUST_BACKTRACE: "full"
+  RUSTFLAGS: "-C opt-level=0 -g"
+jobs:
+  macos:
+    strategy:
+      matrix:
+        toolchain:
+          - nightly
+          - beta
+          - stable
+          - 1.86.0
+          - 1.85.1
+
+    continue-on-error: true
+    name: Check, Build and Run
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.toolchain }}
+          override: true
+      - name: check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+      - name: build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+      - name: install
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: --path .
+
+      - name: ensure folders
+        run: mkdir -p exports-${{ matrix.toolchain }}-{adm,cdb}
+
+      - name: cdb export
+        run: sudo cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export.json
+
+      - name: cdb export
+        run: sudo cdb fix
+
+      - name: cdb export postfix
+        run: sudo cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export-postfix.json
+
+      - name: cdb
+        run: sudo adm turn-off -i
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "exports-cdb-${{ matrix.toolchain }}"
+          path: "exports-cdb-${{ matrix.toolchain }}"
+
+      - name: uname -a
+        run: uname -a
+
+      - name: rustup show
+        run: rustup show
