@@ -141,26 +141,26 @@ pub fn defaults_ok(args: &[&str]) -> Result<(i64, String, String)> {
 
 pub fn coredata_fix(quiet: bool) -> Result<()> {
     for args in vec![
-        vec!["delete", "-globalDomain", "NSLinguisticDataAssetsRequested"],
-        vec!["delete", "-globalDomain", "NSPreferredWebServices"],
-        vec!["delete", "-globalDomain", "AppleInterfaceStyle"],
+        vec!["delete", "NSGlobalDomain", "NSLinguisticDataAssetsRequested"],
+        vec!["delete", "NSGlobalDomain", "NSPreferredWebServices"],
+        vec!["delete", "NSGlobalDomain", "AppleInterfaceStyle"],
         vec![
             "delete",
-            "-globalDomain",
+            "NSGlobalDomain",
             "com.apple.gms.availability.useCasesWhoseAssetsNotReady",
         ],
-        vec!["delete", "-globalDomain", "com.apple.gms.availability.disallowedUseCases"],
-        vec!["write", "-globalDomain", "AppleLanguages", "-array", "\"en-US\""],
+        vec!["delete", "NSGlobalDomain", "com.apple.gms.availability.disallowedUseCases"],
+        vec!["write", "NSGlobalDomain", "AppleLanguages", "-array", "\"en-US\""],
         vec![
             "write",
-            "-globalDomain",
+            "NSGlobalDomain",
             "NSLinguisticDataAssetsRequestedByChecker",
             "-array",
             "us",
         ],
         vec![
             "write",
-            "-globalDomain",
+            "NSGlobalDomain",
             "NSLinguisticDataAssetsRequestedByChecker",
             "-dict",
             "KB_SpellingLanguage",
@@ -168,7 +168,7 @@ pub fn coredata_fix(quiet: bool) -> Result<()> {
             "KB_SpellingLanguageIsAutomatic",
             "false",
         ],
-        vec!["write", "-globalDomain", "AppleShowScrollBars", "-string", "Always"],
+        vec!["write", "NSGlobalDomain", "AppleShowScrollBars", "-string", "Always"],
     ] {
         defaults_ok(&args)?;
         if !quiet {

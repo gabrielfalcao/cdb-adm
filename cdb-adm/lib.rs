@@ -13,8 +13,9 @@ pub mod ad_manager;
 use std::collections::BTreeSet;
 
 pub use ad_manager::{
-    list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
-    turn_off_system_agent_or_daemon, turn_off_user_agent_or_daemon, Uid,
+    boot_up, boot_up_system_agent_or_daemon, boot_up_user_agent_or_daemon, list_agents_and_daemons,
+    list_agents_and_daemons_paths, turn_off, turn_off_system_agent_or_daemon,
+    turn_off_user_agent_or_daemon, Uid,
 };
 
 pub fn no_doubles(list: &[&str]) -> Vec<String> {

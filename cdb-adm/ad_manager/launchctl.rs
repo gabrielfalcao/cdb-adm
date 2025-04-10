@@ -3,6 +3,9 @@ use std::process::{Command, Stdio};
 use crate::{Error, Result, Uid};
 
 pub fn turn_off_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<()> {
+    // println!("next input turns off '{}'. [ENTER] to continue", agent_or_daemon(&ad, uid.clone()));
+    // let mut line = String::new();
+    // std::io::stdin().read_line(&mut line).unwrap();
     bootout_agent_or_daemon(&ad, uid.clone())?;
     disable_agent_or_daemon(&ad, uid)?;
     Ok(())
@@ -14,6 +17,13 @@ pub fn agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> String {
         None => format!("system/{}", ad),
     }
 }
+
+pub fn boot_up_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<()> {
+    kickstart_agent_or_daemon(&ad, uid.clone())?;
+    enable_agent_or_daemon(&ad, uid)?;
+    Ok(())
+}
+
 pub fn launchctl(
     subcommand: impl std::fmt::Display,
     ad: impl std::fmt::Display,
@@ -36,6 +46,13 @@ pub fn bootout_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> 
 }
 pub fn disable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
     Ok(launchctl("disable", ad, uid)?)
+}
+
+pub fn kickstart_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
+    Ok(launchctl("kickstart", ad, uid)?)
+}
+pub fn enable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
+    Ok(launchctl("enable", ad, uid)?)
 }
 
 pub fn shell_command_string_output(

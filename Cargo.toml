@@ -20,7 +20,7 @@ bench = false
 
 [[bin]]
 name = "cdb"
-path = "./cdb.rs"
+path = "./bin/cdb.rs"
 doctest = false
 bench = false
 doc = false
@@ -28,7 +28,7 @@ doc = false
 
 [[bin]]
 name = "adm"
-path = "./adm.rs"
+path = "./bin/adm.rs"
 doctest = false
 bench = false
 doc = false

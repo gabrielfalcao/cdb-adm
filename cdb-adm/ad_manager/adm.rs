@@ -45,7 +45,7 @@ impl std::fmt::Debug for Uid {
         write!(f, "Uid({})", self.0)
     }
 }
-pub const NON_NEEDED_SERVICES: [&'static str; 205] = include!("agents-and-daemons.noon");
+
 pub fn list_agents_and_daemons(
     uid: Option<Uid>,
     with_qualifier: bool,
