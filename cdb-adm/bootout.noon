@@ -1,7 +1,9 @@
 [
     "com.apple.AssetCacheTetheratorService",
     "com.apple.AssistiveControl",
+    "com.apple.MobileFileIntegrity",
     "com.apple.adid",
+    "com.apple.audio.AudioComponentRegistrar",
     "com.apple.automountd",
     "com.apple.boswatcher",
     "com.apple.captiveagent",
@@ -31,6 +33,7 @@
     "com.apple.metadata.mds.spindump",
     "com.apple.metadata.mdwrite",
     "com.apple.mobile.NRDUpdated",
+    "com.apple.mobile.keybagd",
     "com.apple.mobile.notification_proxy",
     "com.apple.mobile.obliteration",
     "com.apple.mobile.softwareupdated",

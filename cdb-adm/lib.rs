@@ -5,7 +5,6 @@ mod coredata;
 pub use coredata::{
     coredata_fix, delete_domains, export_all_domains, export_domain, export_domains,
     export_library_preferences, export_plists_from_path, list_domains, DeleteDefaultsMacOSResult,
-    DEFAULT_DOMAINS,
 };
 mod key_chain_data;
 pub use key_chain_data::KeychainData;
