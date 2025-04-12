@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 use std::process::{Command, Stdio};
 
-use serde::{Deserialize, Serialize};
-
-use crate::{Error, Result};
+use crate::{CDBSettings, Error, Result};
 
 pub fn export_domain(domain: impl std::fmt::Display) -> Result<plist::Value> {
     let domain = domain.to_string();
@@ -58,6 +56,7 @@ pub fn delete_domains(domains: &[&str]) -> Result<DeleteDefaultsMacOSResult> {
     Ok(DeleteDefaultsMacOSResult { domain_map, errors })
 }
 
+use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeleteDefaultsMacOSResult {
     pub domain_map: BTreeMap<String, plist::Value>,
@@ -141,8 +140,32 @@ pub fn defaults_ok(args: &[&str]) -> Result<(i64, String, String)> {
 }
 
 pub fn coredata_fix(quiet: bool) -> Result<()> {
+    let settings = CDBSettings::cli(quiet);
+
+    for args in settings.defaults_exec_args() {
+        defaults_ok(
+            &args
+                .iter()
+                .filter(|domain| !domain.is_empty())
+                .map(|domain| domain.as_str())
+                .collect::<Vec<&str>>(),
+        )?;
+        if !quiet {
+            eprintln!("defaults {} -", args.join(" "));
+        }
+    }
+    for args in defaults_exec_args() {
+        defaults_ok(&args)?;
+        if !quiet {
+            eprintln!("defaults {} -", args.join(" "));
+        }
+    }
+    Ok(())
+}
+fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
     use iocore::Path;
-    for args in vec![
+    let screencapture = Path::new("~").to_string();
+    vec![
         vec!["delete", "NSGlobalDomain", "NSLinguisticDataAssetsRequested"],
         vec!["delete", "NSGlobalDomain", "NSPreferredWebServices"],
         vec!["delete", "NSGlobalDomain", "AppleInterfaceStyle"],
@@ -422,7 +445,7 @@ pub fn coredata_fix(quiet: bool) -> Result<()> {
             "com.apple.screencapture",
             "location",
             "-string",
-            Path::new("~").to_string().as_str(),
+            screencapture.clone().leak(),
         ],
         vec![
             "write",
@@ -544,15 +567,8 @@ pub fn coredata_fix(quiet: bool) -> Result<()> {
             "-bool",
             "NO",
         ],
-    ] {
-        defaults_ok(&args)?;
-        if !quiet {
-            eprintln!("defaults {} -", args.join(" "));
-        }
-    }
-    Ok(())
+    ]
 }
-
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;

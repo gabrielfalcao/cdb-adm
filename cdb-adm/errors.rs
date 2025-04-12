@@ -11,6 +11,7 @@ pub enum Error {
     ParseIntError(String),
     KeychainError(String),
     PlistError(String),
+    TomlError(String),
 }
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -19,13 +20,14 @@ impl Display for Error {
             "{}: {}",
             self.variant(),
             match self {
-                Self::IOError(s) => format!("{}", s),
-                Self::JsonError(s) => format!("{}", s),
-                Self::LaunchdError(s) => format!("{}", s),
-                Self::LaunchdServiceNotRunning(s) => format!("{}", s),
-                Self::ParseIntError(s) => format!("{}", s),
-                Self::KeychainError(s) => format!("{}", s),
-                Self::PlistError(s) => format!("{}", s),
+                Self::IOError(e) => e.to_string(),
+                Self::JsonError(e) => e.to_string(),
+                Self::LaunchdError(e) => e.to_string(),
+                Self::LaunchdServiceNotRunning(e) => e.to_string(),
+                Self::ParseIntError(e) => e.to_string(),
+                Self::KeychainError(e) => e.to_string(),
+                Self::PlistError(e) => e.to_string(),
+                Self::TomlError(e) => e.to_string(),
             }
         )
     }
@@ -41,6 +43,7 @@ impl Error {
             Error::ParseIntError(_) => "ParseIntError",
             Error::KeychainError(_) => "KeychainError",
             Error::PlistError(_) => "PlistError",
+            Error::TomlError(_) => "TomlError",
         }
         .to_string()
     }
@@ -49,32 +52,38 @@ impl Error {
 impl std::error::Error for Error {}
 impl From<std::io::Error> for Error {
     fn from(e: std::io::Error) -> Self {
-        Error::IOError(format!("{}", e))
+        Error::IOError(e.to_string())
     }
 }
 impl From<std::num::ParseIntError> for Error {
     fn from(e: std::num::ParseIntError) -> Self {
-        Error::ParseIntError(format!("{}", e))
+        Error::ParseIntError(e.to_string())
     }
 }
 impl From<iocore::Error> for Error {
     fn from(e: iocore::Error) -> Self {
-        Error::IOError(format!("{}", e))
+        Error::IOError(e.to_string())
     }
 }
 impl From<plist::Error> for Error {
     fn from(e: plist::Error) -> Self {
-        Error::PlistError(format!("{}", e))
+        Error::PlistError(e.to_string())
     }
 }
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
-        Error::JsonError(format!("{}", e))
+        Error::JsonError(e.to_string())
     }
 }
 impl From<security_framework::base::Error> for Error {
     fn from(e: security_framework::base::Error) -> Self {
-        Error::KeychainError(format!("{}", e))
+        Error::KeychainError(e.to_string())
+    }
+}
+impl From<toml::de::Error> for Error {
+    fn from(e: toml::de::Error) -> Error {
+        Error::TomlError(e.to_string())
     }
 }
 pub type Result<T> = std::result::Result<T, Error>;
+//find . -type f -name 'errors.rs*' -exec refactors -wp {} '(Error::\w+)e.to_string[(][)]' '$1(e.to_string())' \;

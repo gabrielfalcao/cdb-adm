@@ -1,6 +1,8 @@
 mod errors;
 pub use errors::{Error, Result};
 
+mod settings;
+pub use settings::CDBSettings;
 mod coredata;
 pub use coredata::{
     coredata_fix, delete_domains, export_all_domains, export_domain, export_domains,
