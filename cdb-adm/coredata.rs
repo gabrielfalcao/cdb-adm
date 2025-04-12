@@ -8,9 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub fn export_domain(domain: impl std::fmt::Display) -> Result<plist::Value> {
     let domain = domain.to_string();
-    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let path = iocore::Path::raw("/tmp").join(format!("{}-{}", &domain, &ts));
-
+    let path = iocore::Path::tmp_file();
     let (exit_code, _, err) = defaults(&["export", &domain.to_string(), &path.to_string()])?;
     if exit_code != 0 {
         return Err(Error::IOError(format!(
@@ -57,22 +55,8 @@ pub fn delete_domains(domains: &[&str]) -> Result<DeleteDefaultsMacOSResult> {
                 errors.insert(domain.to_string(), e);
             },
         }
-        save_domain_map(&domain, domain_map.clone());
     }
     Ok(DeleteDefaultsMacOSResult { domain_map, errors })
-}
-pub fn save_domain_map(domain: impl std::fmt::Display, domains: BTreeMap<String, plist::Value>) {
-    let domain = domain.to_string();
-    let data = serde_json::to_string_pretty(&domains).unwrap_or_default();
-    if data.is_empty() {
-        return;
-    }
-    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    let path = iocore::Path::raw("/tmp")
-        .join(format!("{}-{}", &domain, &ts))
-        .try_canonicalize();
-
-    path.write_unchecked(data.as_bytes());
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
