@@ -39,7 +39,7 @@ pub struct TurnOff {
     #[arg(short, long)]
     include_non_needed: bool,
 
-    #[arg(short = 'u', long)]
+    #[arg(short = 'U', long)]
     include_system_uids: bool,
 }
 #[derive(Args, Debug)]
@@ -74,7 +74,7 @@ pub struct BootUp {
     #[arg(short, long)]
     include_non_needed: bool,
 
-    #[arg(short = 'u', long)]
+    #[arg(short = 'U', long)]
     include_system_uids: bool,
 }
 
