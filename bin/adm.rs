@@ -1,5 +1,6 @@
 use cdb_adm::{
-    boot_up, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off, boot_out, Result, Uid,
+    boot_out, boot_up, escalate, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
+    Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 
@@ -37,6 +38,9 @@ pub struct TurnOff {
 
     #[arg(short, long)]
     include_non_needed: bool,
+
+    #[arg(short = 'u', long)]
+    include_system_uids: bool,
 }
 #[derive(Args, Debug)]
 pub struct BootOut {
@@ -69,6 +73,9 @@ pub struct BootUp {
 
     #[arg(short, long)]
     include_non_needed: bool,
+
+    #[arg(short = 'u', long)]
+    include_system_uids: bool,
 }
 
 #[derive(Args, Debug)]
@@ -111,6 +118,7 @@ fn main() -> Result<()> {
                 println!("{}", &agent_or_daemon);
             },
         Command::TurnOff(args) => {
+            escalate()?;
             let (success, errors) = turn_off(
                 args.uid.clone(),
                 !args.verbose,
@@ -118,6 +126,7 @@ fn main() -> Result<()> {
                 args.user_services.clone(),
                 args.system_services.clone(),
                 args.include_non_needed,
+                args.include_system_uids,
             );
 
             if success.len() > 0 {
@@ -128,6 +137,7 @@ fn main() -> Result<()> {
             }
         },
         Command::BootOut(args) => {
+            escalate()?;
             let (success, errors) =
                 boot_out(args.uid.clone(), !args.verbose, !args.display_warnings);
 
@@ -139,6 +149,7 @@ fn main() -> Result<()> {
             }
         },
         Command::BootUp(args) => {
+            escalate()?;
             let (success, errors) = boot_up(
                 args.uid.clone(),
                 !args.verbose,
@@ -146,16 +157,14 @@ fn main() -> Result<()> {
                 args.user_services.clone(),
                 args.system_services.clone(),
                 args.include_non_needed,
+                args.include_system_uids,
             );
 
             if success.len() > 0 {
                 println!("{} agents or daemons booted up:\n{}", success.len(), success.join("\n"));
             }
             if errors.len() > 0 {
-                println!(
-                    "{} agents or daemons might be already booted up",
-                    errors.len(),
-                );
+                println!("{} agents or daemons might be already booted up", errors.len(),);
             }
         },
     }

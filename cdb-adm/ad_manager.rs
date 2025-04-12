@@ -9,8 +9,8 @@ pub use launchctl::{
     agent_or_daemon, boot_up_agent_or_daemon, bootout_agent_or_daemon, turn_off_agent_or_daemon,
 };
 
-pub const NON_NEEDED_SERVICES: [&'static str; 240] = include!("agents-and-daemons.noon");
-pub const BOOTOUT_SERVICES: [&'static str; 58] = include!("bootout.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 243] = include!("agents-and-daemons.noon");
+pub const BOOTOUT_SERVICES: [&'static str; 64] = include!("bootout.noon");
 
 pub fn turn_off(
     uid: Option<Uid>,
@@ -19,6 +19,7 @@ pub fn turn_off(
     user_services: Vec<String>,
     system_services: Vec<String>,
     include_non_needed: bool,
+    include_system_uids: bool,
 ) -> (Vec<String>, Vec<(String, Error)>) {
     let mut errors = Vec::<(String, Error)>::new();
     let mut success = Vec::<String>::new();
@@ -48,7 +49,7 @@ pub fn turn_off(
     for ad in &user_services_set {
         turn_off_user_agent_or_daemon(ad, uid, quiet, silent_warnings, &mut success, &mut errors);
     }
-    if include_non_needed {
+    if include_non_needed && include_system_uids {
         for uid in system_uids() {
             for ad in &user_services_set {
                 turn_off_user_agent_or_daemon(
@@ -175,6 +176,7 @@ pub fn boot_up(
     user_services: Vec<String>,
     system_services: Vec<String>,
     include_non_needed: bool,
+    include_system_uids: bool,
 ) -> (Vec<String>, Vec<(String, Error)>) {
     let mut errors = Vec::<(String, Error)>::new();
     let mut success = Vec::<String>::new();
@@ -204,7 +206,7 @@ pub fn boot_up(
     for ad in &user_services_set {
         boot_up_user_agent_or_daemon(&ad, uid, quiet, silent_warnings, &mut success, &mut errors);
     }
-    if include_non_needed {
+    if include_non_needed && include_system_uids {
         for uid in system_uids() {
             for ad in &user_services_set {
                 boot_up_user_agent_or_daemon(

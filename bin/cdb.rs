@@ -1,5 +1,6 @@
 use cdb_adm::{
-    coredata_fix, delete_domains, export_domains, export_library_preferences, list_domains, Result,
+    coredata_fix, delete_domains, export_domains, export_library_preferences,
+    list_domains, Result,
 };
 use clap::{Args, Parser, Subcommand};
 use iocore::Path;

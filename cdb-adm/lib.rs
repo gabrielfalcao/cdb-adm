@@ -26,3 +26,13 @@ pub fn no_doubles(list: &[&str]) -> Vec<String> {
     no_doubles.sort();
     no_doubles.iter().map(|o| o.to_string()).collect::<Vec<String>>()
 }
+
+
+pub fn escalate() -> Result<()> {
+    let user = iocore::User::id()?;
+    if user.name() == "root" && user.uid() == 0 {
+        Ok(())
+    } else {
+        Err(Error::IOError(format!("{}[uid {}] is not root", &user.name, &user.uid)))
+    }
+}
