@@ -1,4 +1,6 @@
-use cdb_adm::{coredata_fix, delete_domains, export_domains, list_domains, Result};
+use cdb_adm::{
+    coredata_fix, delete_domains, export_domains, export_library_preferences, list_domains, Result,
+};
 use clap::{Args, Parser, Subcommand};
 use iocore::Path;
 
@@ -55,7 +57,7 @@ fn main() -> Result<()> {
             coredata_fix(op.quiet)?;
         },
         Command::Export(op) => {
-            let result = export_domains(
+            let mut result = export_domains(
                 &op.domains
                     .iter()
                     .filter(|domain| !domain.is_empty())
@@ -63,6 +65,8 @@ fn main() -> Result<()> {
                     .collect::<Vec<&str>>(),
                 !op.no_global,
             )?;
+            result.extend(export_library_preferences()?);
+
             let data = serde_json::to_string_pretty(&result)?;
             match op.output_path {
                 Some(path) => {

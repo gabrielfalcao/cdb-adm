@@ -6,10 +6,6 @@ description = "CoreData Backup / Agents and Daemons Manager"
 autoexamples = false
 autobenches = false
 
-[package.metadata]
-
-
-
 [lib]
 name = "cdb_adm"
 path = "cdb-adm/lib.rs"

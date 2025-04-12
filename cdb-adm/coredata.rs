@@ -100,6 +100,24 @@ pub fn export_domains(domains: &[&str], global: bool) -> Result<BTreeMap<String,
     }
     Ok(data)
 }
+pub fn export_plists_from_path(path: &str) -> Result<BTreeMap<String, plist::Value>> {
+    let path_domains =
+        iocore::walk_dir(iocore::Path::raw(path), iocore::NoopProgressHandler, None)?
+            .iter()
+            .filter(|path| {
+                path.is_file() && path.extension().unwrap_or_default().ends_with("plist")
+            })
+            .map(|path| path.to_string())
+            .collect::<Vec<String>>();
+
+    Ok(export_domains(
+        &path_domains.iter().map(|domain| domain.as_str()).collect::<Vec<&str>>(),
+        false,
+    )?)
+}
+pub fn export_library_preferences() -> Result<BTreeMap<String, plist::Value>> {
+    Ok(export_plists_from_path("/Library/Preferences")?)
+}
 pub fn export_all_domains() -> Result<BTreeMap<String, plist::Value>> {
     Ok(export_domains(
         &list_domains()?
@@ -150,7 +168,51 @@ pub fn coredata_fix(quiet: bool) -> Result<()> {
             "com.apple.gms.availability.useCasesWhoseAssetsNotReady",
         ],
         vec!["delete", "NSGlobalDomain", "com.apple.gms.availability.disallowedUseCases"],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.mDNSResponder.plist",
+            "NoMulticastAdvertisements",
+            "-bool",
+            "YES",
+        ],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.bluetooth.plist",
+            "BluetoothAutoSeekKeyboard",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.bluetooth.plist",
+            "BluetoothAutoSeekPointingDevice",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.bluetooth.plist",
+            "SpatialSoundProfileAllowed",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.bluetooth.plist",
+            "move3PPLEMSToLegacyModeSerial",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "/Library/Preferences/com.apple.TimeMachine.plist",
+            "PreferencesVersion",
+            "-integer",
+            "1",
+        ],
         vec!["write", "NSGlobalDomain", "AppleLanguages", "-array", "\"en-US\""],
+        vec!["write", "NSGlobalDomain", "KeyRepeat", "-integer", "1"],
+        vec!["write", "NSGlobalDomain", "com.apple.keyboard.fnState", "-integer", "0"],
         vec![
             "write",
             "NSGlobalDomain",

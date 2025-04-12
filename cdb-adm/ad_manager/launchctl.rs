@@ -2,12 +2,30 @@ use std::process::{Command, Stdio};
 
 use crate::{Error, Result, Uid};
 
-pub fn turn_off_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<()> {
+pub fn turn_off_agent_or_daemon(
+    ad: impl std::fmt::Display,
+    uid: Option<Uid>,
+    silent_warnings: bool,
+) -> Result<()> {
     // println!("next input turns off '{}'. [ENTER] to continue", agent_or_daemon(&ad, uid.clone()));
     // let mut line = String::new();
     // std::io::stdin().read_line(&mut line).unwrap();
-    bootout_agent_or_daemon(&ad, uid.clone())?;
-    disable_agent_or_daemon(&ad, uid)?;
+    match bootout_agent_or_daemon(&ad, uid.clone()) {
+        Ok(_) => {},
+        Err(Error::LaunchdServiceNotRunning(e)) =>
+            if !silent_warnings {
+                eprintln!("bootout {}[warning] {}", &ad, e);
+            },
+        Err(e) => return Err(e),
+    };
+    match disable_agent_or_daemon(&ad, uid) {
+        Ok(_) => {},
+        Err(Error::LaunchdServiceNotRunning(e)) =>
+            if !silent_warnings {
+                eprintln!("disable {}[warning] {}", &ad, e);
+            },
+        Err(e) => return Err(e),
+    };
     Ok(())
 }
 
@@ -18,9 +36,27 @@ pub fn agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> String {
     }
 }
 
-pub fn boot_up_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<()> {
-    kickstart_agent_or_daemon(&ad, uid.clone())?;
-    enable_agent_or_daemon(&ad, uid)?;
+pub fn boot_up_agent_or_daemon(
+    ad: impl std::fmt::Display,
+    uid: Option<Uid>,
+    silent_warnings: bool,
+) -> Result<()> {
+    match bootstrap_agent_or_daemon(&ad, uid.clone()) {
+        Ok(_) => {},
+        Err(Error::LaunchdServiceNotRunning(e)) =>
+            if !silent_warnings {
+                eprintln!("bootstrap {}[warning] {}", &ad, e);
+            },
+        Err(e) => return Err(e),
+    };
+    match enable_agent_or_daemon(&ad, uid) {
+        Ok(_) => {},
+        Err(Error::LaunchdServiceNotRunning(e)) =>
+            if !silent_warnings {
+                eprintln!("enable {}[warning] {}", &ad, e);
+            },
+        Err(e) => return Err(e),
+    };
     Ok(())
 }
 
@@ -29,15 +65,24 @@ pub fn launchctl(
     ad: impl std::fmt::Display,
     uid: Option<Uid>,
 ) -> Result<i32> {
-    let command = format!("launchctl {} {}", &subcommand, &agent_or_daemon(ad, uid));
-    let (exit_code, _, err) = shell_command_string_output(&command, "/System")?;
-    if exit_code != 0 {
-        Err(Error::LaunchdError(format!(
-            "`{}' failed with exit code {:#?}: {}",
-            &command, exit_code, err
-        )))
-    } else {
-        Ok(exit_code)
+    let args = vec![subcommand.to_string(), agent_or_daemon(&ad, uid)];
+    let (exit_code, _, err) = launchctl_ok(
+        &args
+            .iter()
+            .filter(|domain| !domain.is_empty())
+            .map(|domain| domain.as_str())
+            .collect::<Vec<&str>>(),
+    )?;
+
+    match exit_code {
+        0 => Ok(exit_code.try_into().unwrap_or_default()),
+        3 | 125 => Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid).to_string())),
+        exit_code => Err(Error::LaunchdError(format!(
+            "`launchctl {}' failed with exit code {:#?}: {}",
+            args.join(" "),
+            exit_code,
+            err
+        ))),
     }
 }
 
@@ -47,34 +92,24 @@ pub fn bootout_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> 
 pub fn disable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
     Ok(launchctl("disable", ad, uid)?)
 }
-
-pub fn kickstart_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
-    Ok(launchctl("kickstart", ad, uid)?)
+pub fn bootstrap_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
+    Ok(launchctl("bootstrap", ad, uid)?)
 }
 pub fn enable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
     Ok(launchctl("enable", ad, uid)?)
 }
-
-pub fn shell_command_string_output(
-    command: impl std::fmt::Display,
-    current_dir: impl std::fmt::Display,
-) -> Result<(i32, String, String)> {
-    let args = command
-        .to_string()
-        .split(" ")
-        .map(|arg| arg.trim().to_string())
-        .collect::<Vec<String>>();
-    let mut cmd = Command::new(args[0].clone());
-    let cmd = cmd.current_dir(current_dir.to_string());
-    let cmd = cmd.args(args[1..].to_vec());
+pub fn launchctl_ok(args: &[&str]) -> Result<(i64, String, String)> {
+    let mut cmd = Command::new("launchctl");
+    let cmd = cmd.current_dir("/System");
+    let cmd = cmd.args(args);
     let cmd = cmd.stdin(Stdio::null());
     let cmd = cmd.stdout(Stdio::piped());
     let cmd = cmd.stderr(Stdio::piped());
     let child = cmd.spawn()?;
     let output = child.wait_with_output()?;
-    let status = output.status.code().unwrap_or_default();
+    let exit_code: i64 = output.status.code().unwrap_or_default().into();
     Ok((
-        status,
+        exit_code,
         String::from_utf8(output.stdout).unwrap_or_default(),
         String::from_utf8(output.stderr).unwrap_or_default(),
     ))

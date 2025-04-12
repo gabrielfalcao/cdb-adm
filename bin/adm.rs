@@ -1,5 +1,5 @@
 use cdb_adm::{
-    boot_up, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off, Error, Result, Uid,
+    boot_up, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off, boot_out, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 
@@ -14,6 +14,7 @@ pub struct Cli {
 pub enum Command {
     List(List),
     TurnOff(TurnOff),
+    BootOut(BootOut),
     BootUp(BootUp),
 }
 
@@ -32,20 +33,23 @@ pub struct TurnOff {
     verbose: bool,
 
     #[arg(short, long)]
+    display_warnings: bool,
+
+    #[arg(short, long)]
     include_non_needed: bool,
 }
+#[derive(Args, Debug)]
+pub struct BootOut {
+    #[arg(short, long, default_value = "501")]
+    uid: Option<Uid>,
 
-impl TurnOff {
-    pub fn turn_off(&self) -> (Vec<String>, Vec<(String, Error)>) {
-        turn_off(
-            self.uid.clone(),
-            !self.verbose,
-            self.user_services.clone(),
-            self.system_services.clone(),
-            self.include_non_needed,
-        )
-    }
+    #[arg(short, long)]
+    verbose: bool,
+
+    #[arg(short, long)]
+    display_warnings: bool,
 }
+
 #[derive(Args, Debug)]
 pub struct BootUp {
     #[arg(short, long, default_value = "501")]
@@ -61,20 +65,12 @@ pub struct BootUp {
     verbose: bool,
 
     #[arg(short, long)]
+    display_warnings: bool,
+
+    #[arg(short, long)]
     include_non_needed: bool,
 }
 
-impl BootUp {
-    pub fn boot_up(&self) -> (Vec<String>, Vec<(String, Error)>) {
-        boot_up(
-            self.uid.clone(),
-            !self.verbose,
-            self.user_services.clone(),
-            self.system_services.clone(),
-            self.include_non_needed,
-        )
-    }
-}
 #[derive(Args, Debug)]
 pub struct List {
     #[arg(short, long, default_value = "501")]
@@ -115,28 +111,50 @@ fn main() -> Result<()> {
                 println!("{}", &agent_or_daemon);
             },
         Command::TurnOff(args) => {
-            let (success, errors) = args.turn_off();
+            let (success, errors) = turn_off(
+                args.uid.clone(),
+                !args.verbose,
+                !args.display_warnings,
+                args.user_services.clone(),
+                args.system_services.clone(),
+                args.include_non_needed,
+            );
+
             if success.len() > 0 {
                 println!("{} agents or daemons turned off:\n{}", success.len(), success.join("\n"));
             }
             if errors.len() > 0 {
-                println!(
-                    "{} agents or daemons might be already turned off:\n{}",
-                    errors.len(),
-                    errors.iter().map(|(n, _)| n.to_string()).collect::<Vec<String>>().join("\n")
-                );
+                println!("{} agents or daemons might be already turned off", errors.len(),);
+            }
+        },
+        Command::BootOut(args) => {
+            let (success, errors) =
+                boot_out(args.uid.clone(), !args.verbose, !args.display_warnings);
+
+            if success.len() > 0 {
+                println!("{} agents or daemons booted out", success.len());
+            }
+            if errors.len() > 0 {
+                println!("{} agents or daemons might be already booted out", errors.len(),);
             }
         },
         Command::BootUp(args) => {
-            let (success, errors) = args.boot_up();
+            let (success, errors) = boot_up(
+                args.uid.clone(),
+                !args.verbose,
+                !args.display_warnings,
+                args.user_services.clone(),
+                args.system_services.clone(),
+                args.include_non_needed,
+            );
+
             if success.len() > 0 {
-                println!("{} agents or daemons turned off:\n{}", success.len(), success.join("\n"));
+                println!("{} agents or daemons booted up:\n{}", success.len(), success.join("\n"));
             }
             if errors.len() > 0 {
                 println!(
-                    "{} agents or daemons might be already turned off:\n{}",
+                    "{} agents or daemons might be already booted up",
                     errors.len(),
-                    errors.iter().map(|(n, _)| n.to_string()).collect::<Vec<String>>().join("\n")
                 );
             }
         },
