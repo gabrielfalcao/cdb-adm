@@ -5,8 +5,9 @@
     "com.apple.adid",
     "com.apple.audio.AudioComponentRegistrar",
     "com.apple.automountd",
-    "com.apple.boswatcher",
+    "com.apple.boswatcher", // BridgeOSInstallReporting
     "com.apple.captiveagent",
+    "com.apple.cvmsServ", // CPU OpenGL Shader Compilation
     "com.apple.diagnosticd",
     "com.apple.diagnosticextensions.osx.spotlight.helper",
     "com.apple.diagnosticextensionsd",
@@ -15,6 +16,7 @@
     "com.apple.homed",
     "com.apple.imagent",
     "com.apple.lightsoutmanagementd",
+    "com.apple.lskdd",
     "com.apple.managedappdistributionagent",
     "com.apple.managedappdistributiond",
     "com.apple.managedcorespotlightd",
@@ -43,6 +45,7 @@
     "com.apple.modelcatalogd",
     "com.apple.scopedbookmarksagent.xpc",
     "com.apple.ssinvitationagent",
+    "com.apple.suhelperd", // sw update
     "com.apple.symptomsd",
     "com.apple.symptomsd-diag",
     "com.apple.symptomsd-diag.agent",

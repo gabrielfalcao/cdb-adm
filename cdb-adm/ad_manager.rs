@@ -9,8 +9,8 @@ pub use launchctl::{
     agent_or_daemon, boot_up_agent_or_daemon, bootout_agent_or_daemon, turn_off_agent_or_daemon,
 };
 
-pub const NON_NEEDED_SERVICES: [&'static str; 244] = include!("agents-and-daemons.noon");
-pub const BOOTOUT_SERVICES: [&'static str; 53] = include!("bootout.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 249] = include!("agents-and-daemons.noon");
+pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off(
     uid: Option<Uid>,

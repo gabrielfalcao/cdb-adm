@@ -46,9 +46,6 @@ jobs:
       - name: ensure folders
         run: mkdir -p exports-${{ matrix.toolchain }}-{adm,cdb}
 
-      - name: show env
-        run: env
-
       - name: cdb export
         run: sudo cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export.json
 
