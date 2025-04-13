@@ -1,6 +1,6 @@
 use cdb_adm::{
     boot_out, boot_up, escalate, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
-    Result, Uid,
+    turn_off_mdutil, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 
@@ -135,6 +135,7 @@ fn main() -> Result<()> {
             if errors.len() > 0 {
                 println!("{} agents or daemons might be already turned off", errors.len(),);
             }
+            turn_off_mdutil()?;
         },
         Command::BootOut(args) => {
             escalate()?;

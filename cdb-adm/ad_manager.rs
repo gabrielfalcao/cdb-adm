@@ -9,7 +9,7 @@ pub use launchctl::{
     agent_or_daemon, boot_up_agent_or_daemon, bootout_agent_or_daemon, turn_off_agent_or_daemon,
 };
 
-pub const NON_NEEDED_SERVICES: [&'static str; 240] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 244] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 53] = include!("bootout.noon");
 
 pub fn turn_off(
@@ -152,14 +152,14 @@ pub fn turn_off_user_agent_or_daemon(
     match turn_off_agent_or_daemon(&n, uid, silent_warnings) {
         Ok(_) => {
             if !quiet {
-                println!("{} seems to be turned off now.", agent_or_daemon(&n, uid));
+                println!("{} seems to be turned off now - ", agent_or_daemon(&n, uid));
             }
             success.push(agent_or_daemon(&n, uid));
         },
         Err(e) => {
             if !quiet {
                 println!(
-                    "{} might be already turned off: {:#?}",
+                    "{} might be already turned off: {:#?} -",
                     agent_or_daemon(&n, uid),
                     e.to_string()
                 );
