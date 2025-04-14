@@ -89,6 +89,7 @@
     "com.apple.calaccessd",
     "com.apple.cameracaptured",
     "com.apple.cloudd",
+    "com.apple.iomfb_bics_daemon",
     "com.apple.cloudsettingssyncagent",
     "com.apple.cmio.AVCAssistant",
     "com.apple.commerce",

@@ -119,6 +119,7 @@ fn main() -> Result<()> {
             },
         Command::TurnOff(args) => {
             escalate()?;
+            turn_off_mdutil()?;
             let (success, errors) = turn_off(
                 args.uid.clone(),
                 !args.verbose,
@@ -135,7 +136,6 @@ fn main() -> Result<()> {
             if errors.len() > 0 {
                 println!("{} agents or daemons might be already turned off", errors.len(),);
             }
-            turn_off_mdutil()?;
         },
         Command::BootOut(args) => {
             escalate()?;
