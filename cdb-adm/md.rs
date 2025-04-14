@@ -1,6 +1,6 @@
 pub fn turn_off_mdutil() -> crate::Result<()> {
-    mdutil(&["-i", "off"])?;
     mdutil(&["-d"])?;
+    mdutil(&["-a", "-i", "off"])?;
     Ok(())
 }
 pub fn mdutil(args: &[&str]) -> crate::Result<(i64, String, String)> {

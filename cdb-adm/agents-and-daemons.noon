@@ -94,6 +94,7 @@
     "com.apple.commerce",
     "com.apple.companiond",
     "com.apple.contactsd",
+    "com.apple.contextstored",
     "com.apple.cvmsServ", //CPU OpenGL Shader Compilation
     "com.apple.diagnosticextensions.osx.timemachine.helper",
     "com.apple.diagnostics_agent",
