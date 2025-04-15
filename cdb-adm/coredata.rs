@@ -1,29 +1,35 @@
 use std::collections::BTreeMap;
+use std::io::{pipe, Write};
 use std::process::{Command, Stdio};
 
-use crate::{CDBSettings, Error, Result};
+use crate::{to_slice_str, to_vec_string, CDBSettings, Error, Result};
 
-pub fn export_domain(domain: impl std::fmt::Display) -> Result<plist::Value> {
-    let domain = domain.to_string();
-    let path = iocore::Path::tmp_file();
-    let (exit_code, _, err) = defaults(&["export", &domain.to_string(), &path.to_string()])?;
+pub fn defaults_write(domain: impl std::fmt::Display, key: &[&str]) -> Result<plist::Value> {
+    validate_domain_path_for_current_user(&domain)?;
+    let mut args = vec!["write".to_string(), domain.to_string()];
+    args.extend(to_vec_string!(key));
+
+    let (exit_code, out, err) = defaults(to_slice_str!(args))?;
     if exit_code != 0 {
         return Err(Error::IOError(format!(
             "defaults export {} failed[{}]: {}",
             &domain, exit_code, err
         )));
     }
-    let bytes = match path.read_bytes() {
-        Ok(bytes) => {
-            path.delete_unchecked();
-            bytes
-        },
-        Err(e) => {
-            path.delete_unchecked();
-            return Err(e.into());
-        },
-    };
-    let plist = plist::from_bytes::<plist::Value>(&bytes)?;
+    let plist = plist::from_bytes::<plist::Value>(out.as_bytes())?;
+    Ok(plist)
+}
+
+pub fn export_domain(domain: impl std::fmt::Display) -> Result<plist::Value> {
+    let domain = domain.to_string();
+    let (exit_code, out, err) = defaults(&["export", &domain.to_string(), "-"])?;
+    if exit_code != 0 {
+        return Err(Error::IOError(format!(
+            "defaults export {} failed[{}]: {}",
+            &domain, exit_code, err
+        )));
+    }
+    let plist = plist::from_bytes::<plist::Value>(out.as_bytes())?;
     Ok(plist)
 }
 
@@ -32,10 +38,24 @@ pub fn defaults_delete_domain(domain: impl std::fmt::Display) -> Result<(String,
     let plist = export_domain(&domain)?;
     let shell_result = defaults(&["delete", &domain.to_string()])?;
     match shell_result {
-        (0, _, _) => Ok((domain, plist)),
+        (0 | 1, _, _) => Ok((domain, plist)),
         (exit_code, _, err) => Err(Error::IOError(format!(
             "defaults delete {} failed[{}]: {}",
             &domain, exit_code, err
+        ))),
+    }
+}
+pub fn defaults_delete(key: &[&str]) -> Result<()> {
+    let mut args = vec!["delete".to_string()];
+    args.extend(to_vec_string!(key));
+    let shell_result = defaults(to_slice_str!(args))?;
+    match shell_result {
+        (0 | 1, _, _) => Ok(()),
+        (exit_code, _, err) => Err(Error::IOError(format!(
+            "defaults {} failed[{}]: {}",
+            args.join(" "),
+            exit_code,
+            err
         ))),
     }
 }
@@ -46,7 +66,8 @@ pub fn delete_domains(domains: &[&str]) -> Result<DeleteDefaultsMacOSResult> {
     for domain in domains {
         match defaults_delete_domain(&domain) {
             Ok((domain, plist)) => {
-                domain_map.insert(domain.to_string(), plist);
+                let path = iocore::Path::raw(&domain).try_canonicalize();
+                domain_map.insert(domain.to_string(), (plist, if path.is_file() { Some(path) } else { None }));
             },
             Err(e) => {
                 errors.insert(domain.to_string(), e);
@@ -59,7 +80,7 @@ pub fn delete_domains(domains: &[&str]) -> Result<DeleteDefaultsMacOSResult> {
 use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DeleteDefaultsMacOSResult {
-    pub domain_map: BTreeMap<String, plist::Value>,
+    pub domain_map: BTreeMap<String, (plist::Value, Option<iocore::Path>)>,
     pub errors: BTreeMap<String, Error>,
 }
 pub fn list_domains() -> Result<Vec<String>> {
@@ -72,17 +93,26 @@ pub fn list_domains() -> Result<Vec<String>> {
         ))),
     }
 }
-pub fn export_domains(domains: &[&str], global: bool) -> Result<BTreeMap<String, plist::Value>> {
-    let mut data = BTreeMap::<String, plist::Value>::new();
+pub fn export_domains(
+    domains: &[&str],
+    global: bool,
+) -> Result<BTreeMap<String, (plist::Value, Option<iocore::Path>)>> {
+    let mut data = BTreeMap::<String, (plist::Value, Option<iocore::Path>)>::new();
     if global {
-        data.insert("NSGlobalDomain".to_string(), export_domain("NSGlobalDomain")?);
+        data.insert("NSGlobalDomain".to_string(), (export_domain("NSGlobalDomain")?, None));
     }
     for domain in domains {
-        data.insert(domain.to_string(), export_domain(&domain)?);
+        let path = iocore::Path::raw(domain).try_canonicalize();
+        data.insert(
+            domain.to_string(),
+            (export_domain(&domain)?, if path.is_file() { Some(path) } else { None }),
+        );
     }
     Ok(data)
 }
-pub fn export_plists_from_path(path: &str) -> Result<BTreeMap<String, plist::Value>> {
+pub fn export_plists_from_path(
+    path: &str,
+) -> Result<BTreeMap<String, (plist::Value, Option<iocore::Path>)>> {
     let path_domains =
         iocore::walk_dir(iocore::Path::raw(path), iocore::NoopProgressHandler, None)?
             .iter()
@@ -92,41 +122,40 @@ pub fn export_plists_from_path(path: &str) -> Result<BTreeMap<String, plist::Val
             .map(|path| path.to_string())
             .collect::<Vec<String>>();
 
-    Ok(export_domains(
-        &path_domains.iter().map(|domain| domain.as_str()).collect::<Vec<&str>>(),
-        false,
-    )?)
+    Ok(export_domains(to_slice_str!(path_domains), false)?)
 }
-pub fn export_library_preferences() -> Result<BTreeMap<String, plist::Value>> {
+pub fn export_library_preferences() -> Result<BTreeMap<String, (plist::Value, Option<iocore::Path>)>>
+{
     Ok(export_plists_from_path("/Library/Preferences")?)
 }
-pub fn export_all_domains() -> Result<BTreeMap<String, plist::Value>> {
-    Ok(export_domains(
-        &list_domains()?
-            .iter()
-            .filter(|domain| !domain.is_empty())
-            .map(|domain| domain.as_str())
-            .collect::<Vec<&str>>(),
-        true,
-    )?)
+pub fn export_all_domains() -> Result<BTreeMap<String, (plist::Value, Option<iocore::Path>)>> {
+    Ok(export_domains(to_slice_str!(list_domains()?), true)?)
 }
 pub fn defaults(args: &[&str]) -> Result<(i64, String, String)> {
-    let (exit_code, stdout, stderr) = defaults_ok(args)?;
-    if exit_code == 0 {
-        Ok((exit_code, stdout, stderr))
-    } else {
-        let command = format!("defaults {}", args.join(" "));
-        Err(Error::IOError(format!(
-            "command `{}' failed with exit code {}",
-            command, exit_code
-        )))
+    let (exit_code, stdout, stderr) = defaults_ok(args, None)?;
+    match exit_code {
+        0 | 1 => Ok((exit_code, stdout, stderr)),
+        _ => {
+            let command = format!("defaults {}", args.join(" "));
+            Err(Error::IOError(format!(
+                "command `{}' failed with exit code {}",
+                command, exit_code
+            )))
+        },
     }
 }
-pub fn defaults_ok(args: &[&str]) -> Result<(i64, String, String)> {
+pub fn defaults_ok(args: &[&str], stdin: Option<Vec<u8>>) -> Result<(i64, String, String)> {
     let mut cmd = Command::new("defaults");
     let cmd = cmd.current_dir("/System");
     let cmd = cmd.args(args);
-    let cmd = cmd.stdin(Stdio::null());
+    let cmd = cmd.stdin(match stdin {
+        Some(bytes) => {
+            let (read_bytes, mut write_bytes) = pipe()?;
+            write_bytes.write_all(&bytes)?;
+            Stdio::from(read_bytes)
+        },
+        None => Stdio::null(),
+    });
     let cmd = cmd.stdout(Stdio::piped());
     let cmd = cmd.stderr(Stdio::piped());
     let child = cmd.spawn()?;
@@ -139,27 +168,69 @@ pub fn defaults_ok(args: &[&str]) -> Result<(i64, String, String)> {
     ))
 }
 
-pub fn coredata_fix(quiet: bool) -> Result<()> {
+pub fn coredata_fix(quiet: bool, dry_run: bool) -> Result<()> {
+    use iocore::Path;
     let settings = CDBSettings::cli(quiet);
+    let user_preferences = Path::raw("~/Library/Preferences").try_canonicalize();
+
+    defaults_delete(&["NSGlobalDomain", "NSLinguisticDataAssetsRequested"])?;
+    defaults_delete(&["NSGlobalDomain", "NSPreferredWebServices"])?;
+    defaults_delete(&["NSGlobalDomain", "AppleInterfaceStyle"])?;
+    defaults_delete_domain(user_preferences.join("com.apple.HIToolbox.plist"))?;
+    defaults_import_json(
+        user_preferences.join("com.apple.HIToolbox.plist"),
+        serde_json::json!({
+            "AppleEnabledInputSources": [
+                {
+                    "InputSourceKind": "Keyboard Layout",
+                    "KeyboardLayout Name": "USInternational-PC",
+                    "KeyboardLayout ID": 15000
+                }
+            ],
+            "AppleSelectedInputSources": [
+                {
+                    "InputSourceKind": "Keyboard Layout",
+                    "KeyboardLayout Name": "USInternational-PC",
+                    "KeyboardLayout ID": 15000
+                }
+            ],
+            "AppleInputSourceHistory": [
+                {
+                    "InputSourceKind": "Keyboard Layout",
+                    "KeyboardLayout Name": "USInternational-PC",
+                    "KeyboardLayout ID": 15000
+                },
+                {
+                    "InputSourceKind": "Keyboard Layout",
+                    "KeyboardLayout Name": "U.S.",
+                    "KeyboardLayout ID": 0
+                }
+            ],
+            "AppleCurrentKeyboardLayoutInputSourceID": "com.apple.keylayout.USInternational-PC"
+        }),
+    )?;
 
     for args in settings.defaults_exec_args() {
-        defaults_ok(
-            &args
-                .iter()
-                .filter(|domain| !domain.is_empty())
-                .map(|domain| domain.as_str())
-                .collect::<Vec<&str>>(),
-        )?;
-        if !quiet {
-            eprintln!("defaults {} -", args.join(" "));
+        if dry_run {
+            println!("defaults {}", args.join(""));
+        } else {
+            defaults_ok(to_slice_str!(args), None)?;
+            if !quiet {
+                eprintln!("defaults {} -", args.join(" "));
+            }
         }
     }
     for args in defaults_exec_args() {
-        defaults_ok(&args)?;
-        if !quiet {
-            eprintln!("defaults {} -", args.join(" "));
+        if dry_run {
+            println!("defaults {}", args.join(""));
+        } else {
+            defaults_ok(&args, None)?;
+            if !quiet {
+                eprintln!("defaults {} -", args.join(" "));
+            }
         }
     }
+
     Ok(())
 }
 fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
@@ -364,12 +435,12 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
             "22F82",
             "com.apple.driver.AppleBluetoothMultitouch.mouse",
         ],
-        vec!["write NSGlobaldomain", "AppleKeyboardUIMode", "-integer", "2"],
-        vec!["write NSGlobaldomain", "AppleLanguages", "-array", "en-US"],
-        vec!["write NSGlobaldomain", "AppleLocale", "-string", "en-US"],
-        vec!["write com.apple.dock", "wvous-br-corner", "-bool", "NO"],
-        vec!["write com.apple.dock", "showAppExposeGestureEnabled", "-bool", "NO"],
-        vec!["write com.apple.dock", "show-recents", "-bool", "NO"],
+        vec!["write", "NSGlobaldomain", "AppleKeyboardUIMode", "-integer", "2"],
+        vec!["write", "NSGlobaldomain", "AppleLanguages", "-array", "en-US"],
+        vec!["write", "NSGlobaldomain", "AppleLocale", "-string", "en-US"],
+        vec!["write", "com.apple.dock", "wvous-br-corner", "-bool", "NO"],
+        vec!["write", "com.apple.dock", "showAppExposeGestureEnabled", "-bool", "NO"],
+        vec!["write", "com.apple.dock", "show-recents", "-bool", "NO"],
         vec!["write", "com.apple.dock", "autohide", "-bool", "true"],
         vec!["write", "com.apple.dock", "autohide-time-modifier", "-float", "0.5"],
         vec![
@@ -413,78 +484,6 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
             "PublicSpotlightIndex",
             "-bool",
             "NO",
-        ],
-        vec![
-            "write",
-            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
-            "AppleSelectedInputSources",
-            "-dict",
-            "InputSourceKind",
-            "-string",
-            "Keyboard Layout",
-            "-string",
-            "KeyboardLayout Name",
-            "-string",
-            "USInternational-PC",
-            "KeyboardLayout ID",
-            "-integer",
-            "15000",
-        ],
-        vec![
-            "write",
-            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
-            "AppleEnabledInputSources",
-            "-dict",
-            "InputSourceKind",
-            "-string",
-            "Keyboard Layout",
-            "-string",
-            "KeyboardLayout Name",
-            "-string",
-            "USInternational-PC",
-            "KeyboardLayout ID",
-            "-integer",
-            "15000",
-        ],
-        vec![
-            "write",
-            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
-            "AppleInputSourceHistory",
-            "-dict",
-            "InputSourceKind",
-            "-string",
-            "Keyboard Layout",
-            "-string",
-            "KeyboardLayout Name",
-            "-string",
-            "USInternational-PC",
-            "KeyboardLayout ID",
-            "-integer",
-            "15000",
-        ],
-        vec![
-            "write",
-            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
-            "AppleInputSourceHistory",
-            "-array",
-            "-dict",
-            "InputSourceKind",
-            "-string",
-            "Keyboard Layout",
-            "-string",
-            "KeyboardLayout Name",
-            "-string",
-            "USInternational-PC",
-            "KeyboardLayout ID",
-            "-integer",
-            "15000",
-        ],
-        vec![
-            "write",
-            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
-            "AppleCurrentKeyboardLayoutInputSourceID",
-            "-string",
-            "com.apple.keylayout.USInternational-PC",
         ],
         vec![
             "write",
@@ -934,44 +933,41 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
         ],
         vec![
             "delete",
-            user_preferences.join("com.apple.siri.sirisuggestions.plist").to_string().leak(),
+            user_preferences
+                .join("com.apple.siri.sirisuggestions.plist")
+                .to_string()
+                .leak(),
         ],
         vec![
             "delete",
-            user_preferences.join("com.apple.DuetExpertCenter.AppPredictionExpert.plist").to_string().leak(),
+            user_preferences
+                .join("com.apple.DuetExpertCenter.AppPredictionExpert.plist")
+                .to_string()
+                .leak(),
         ],
-        vec![
-            "delete",
-            user_preferences.join("com.apple.mmcs.plist").to_string().leak(),
-        ],
+        vec!["delete", user_preferences.join("com.apple.mmcs.plist").to_string().leak()],
         vec![
             "delete",
             user_preferences.join("com.apple.voicememod.plist").to_string().leak(),
         ],
         vec![
             "delete",
-            user_preferences.join("com.apple.preferences.extensions.ShareMenu.plist").to_string().leak(),
+            user_preferences
+                .join("com.apple.preferences.extensions.ShareMenu.plist")
+                .to_string()
+                .leak(),
         ],
         vec![
             "write",
-            user_preferences.join("com.apple.preferences.extensions.ShareMenu.plist").to_string().leak(),
+            user_preferences
+                .join("com.apple.preferences.extensions.ShareMenu.plist")
+                .to_string()
+                .leak(),
             "displayOrder",
             "com.apple.share.AirDrop.send",
         ],
-        vec![
-            "delete",
-            user_preferences
-                .join("com.apple.newscore2.plist")
-                .to_string()
-                .leak(),
-        ],
-        vec![
-            "delete",
-            user_preferences
-                .join("com.apple.iPod.plist")
-                .to_string()
-                .leak(),
-        ],
+        vec!["delete", user_preferences.join("com.apple.newscore2.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.iPod.plist").to_string().leak()],
         vec![
             "delete",
             user_preferences
@@ -981,8 +977,66 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
         ],
         vec![
             "delete",
+            user_preferences.join("com.apple.knowledge-agent.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.xpc.activity2.plist").to_string().leak(),
+            "ActivityBaseDates",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.xpc.activity2.plist").to_string().leak(),
+            "VersionSpecificActivitiesRun",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.IMCoreSpotlight.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.systemuiserver.plist").to_string().leak(),
+            "last-analytics-stamp",
+        ],
+        vec!["delete", user_preferences.join("com.apple.studentd.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.Wallet.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences.join("org.videolan.vlc.plist").to_string().leak(),
+            "recentlyPlayedMedia",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("org.videolan.vlc.plist").to_string().leak(),
+            "recentlyPlayedMediaList",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.HearingAids.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
             user_preferences
-                .join("com.apple.knowledge-agent.plist")
+                .join("com.apple.findmy.findmylocateagent.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec!["delete", user_preferences.join("mbuseragent.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.parsecd").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.homed.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.videosubscriptionsd.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.identityservicesd.plist").to_string().leak(),
+        ],
+        vec!["delete", user_preferences.join("com.apple.Maps.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.CloudSubscriptionFeatures.diagnostic.plist")
                 .to_string()
                 .leak(),
         ],
@@ -1012,11 +1066,11 @@ mod tests {
     }
     #[test]
     fn test_export_all_domains() -> Result<()> {
-        let domains: BTreeMap<String, plist::Value> = export_all_domains()?;
+        let domains: BTreeMap<String, (plist::Value, Option<iocore::Path>)> = export_all_domains()?;
         assert_eq!(domains.is_empty(), false);
         assert_eq!(domains.contains_key(&"com.apple.Safari".to_string()), true);
         let safari = match domains.get("com.apple.Safari").unwrap() {
-            Value::Dictionary(safari) => safari.clone(),
+            (Value::Dictionary(safari), _) => safari.clone(),
             _ => Dictionary::new(),
         };
         let extensions_enabled = match safari.get("ExtensionsEnabled").unwrap() {
@@ -1026,4 +1080,54 @@ mod tests {
         assert_eq!(extensions_enabled, true);
         Ok(())
     }
+}
+
+pub fn validate_domain_path_for_current_user(path: impl std::fmt::Display) -> Result<()> {
+    use iocore::Path;
+    let path = Path::raw(path.to_string()).try_canonicalize();
+    let (_, parts) = path.search_regex("^/Users/(?<user>[^/]+)/")?;
+    let user_home_username = parts[0].to_string();
+    let current_user = iocore::User::id().unwrap_or_default();
+
+    if user_home_username.len() > 0 {
+        if user_home_username.to_string() == current_user.name.to_string() {
+            Ok(())
+        } else {
+            return Err(Error::CoreDataError(format!(
+                "domain file {} does not belong to user {:#?}",
+                path.to_string(),
+                &current_user.name
+            )));
+        }
+    } else {
+        Ok(()) // Path not in user home
+    }
+}
+pub fn defaults_import_json(domain: impl std::fmt::Display, json: serde_json::Value) -> Result<()> {
+    use std::io::BufWriter;
+    validate_domain_path_for_current_user(&domain)?;
+    let args = vec!["import".to_string(), domain.to_string(), "-".to_string()];
+    let mut writer = BufWriter::new(Vec::<u8>::new());
+    plist::to_writer_xml(&mut writer, &json)?;
+    let (exit_code, _, err) = defaults_ok(to_slice_str!(args), Some(writer.into_inner()?))?;
+    if exit_code != 0 {
+        return Err(Error::IOError(format!(
+            "defaults export {} failed[{}]: {}",
+            &domain, exit_code, err
+        )));
+    }
+    Ok(())
+}
+
+#[macro_export]
+macro_rules! to_vec_string {
+    ($slice:expr) => {
+        $slice.iter().map(|j| j.to_string()).collect::<Vec<String>>()
+    };
+}
+#[macro_export]
+macro_rules! to_slice_str {
+    ($vec_string:expr) => {
+        &$vec_string.iter().map(|j| j.as_str()).collect::<Vec<&str>>()
+    };
 }

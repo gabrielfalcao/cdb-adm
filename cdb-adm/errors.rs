@@ -12,6 +12,7 @@ pub enum Error {
     KeychainError(String),
     PlistError(String),
     TomlError(String),
+    CoreDataError(String),
 }
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -28,6 +29,7 @@ impl Display for Error {
                 Self::KeychainError(e) => e.to_string(),
                 Self::PlistError(e) => e.to_string(),
                 Self::TomlError(e) => e.to_string(),
+                Self::CoreDataError(e) => e.to_string(),
             }
         )
     }
@@ -44,6 +46,7 @@ impl Error {
             Error::KeychainError(_) => "KeychainError",
             Error::PlistError(_) => "PlistError",
             Error::TomlError(_) => "TomlError",
+            Error::CoreDataError(_) => "CoreDataError",
         }
         .to_string()
     }
@@ -83,6 +86,11 @@ impl From<security_framework::base::Error> for Error {
 impl From<toml::de::Error> for Error {
     fn from(e: toml::de::Error) -> Error {
         Error::TomlError(e.to_string())
+    }
+}
+impl From<std::io::IntoInnerError<std::io::BufWriter<Vec<u8>>>> for Error {
+    fn from(e: std::io::IntoInnerError<std::io::BufWriter<Vec<u8>>>) -> Self {
+        Error::IOError(format!("{}", e))
     }
 }
 pub type Result<T> = std::result::Result<T, Error>;

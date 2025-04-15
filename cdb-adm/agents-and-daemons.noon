@@ -66,6 +66,8 @@
     "com.apple.amp.mediasharingd",
     "com.apple.analyticsd",
     "com.apple.appinstalld",
+    "com.apple.parsecd",
+    "com.apple.parsec-fbf",
     "com.apple.appleaccountd",
     "com.apple.appleh13camerad",
     "com.apple.appleh16camerad",

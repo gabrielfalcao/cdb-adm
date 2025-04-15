@@ -24,6 +24,9 @@ pub enum Command {
 pub struct Fix {
     #[arg(short, long)]
     quiet: bool,
+
+    #[arg(short, long)]
+    dry_run: bool,
 }
 #[derive(Args, Debug)]
 pub struct Export {
@@ -34,10 +37,14 @@ pub struct Export {
     no_global: bool,
 
     #[arg(short, long)]
+    library_preferences: bool,
+
+    #[arg(short, long)]
     output_path: Option<Path>,
 }
 #[derive(Args, Debug)]
-pub struct List {}
+pub struct List {
+}
 #[derive(Args, Debug)]
 pub struct Delete {
     #[arg()]
@@ -54,7 +61,7 @@ fn main() -> Result<()> {
                 println!("{}", &domain);
             },
         Command::Fix(op) => {
-            coredata_fix(op.quiet)?;
+            coredata_fix(op.quiet, op.dry_run)?;
         },
         Command::Export(op) => {
             let mut result = export_domains(
@@ -65,7 +72,9 @@ fn main() -> Result<()> {
                     .collect::<Vec<&str>>(),
                 !op.no_global,
             )?;
-            result.extend(export_library_preferences()?);
+            if op.library_preferences {
+                result.extend(export_library_preferences()?);
+            }
 
             let data = serde_json::to_string_pretty(&result)?;
             match op.output_path {
