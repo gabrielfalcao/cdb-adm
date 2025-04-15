@@ -47,21 +47,33 @@ pub fn launchctl_act(
     gui: bool,
 ) -> Result<i64> {
     let args = vec![subcommand.to_string(), agent_or_daemon(&ad, uid, gui)];
-    let (exit_code, _, _) = launchctl(
+    match launchctl(
         &args
             .iter()
             .filter(|domain| !domain.is_empty())
             .map(|domain| domain.as_str())
             .collect::<Vec<&str>>(),
-    )?;
-    match exit_code {
-        3 | 125 => Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid, gui).to_string())),
-        _ => Ok(exit_code),
+    ) {
+        Ok((0, _, _)) => Ok(0),
+        Ok((3 | 125, _, _)) =>
+            Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid, gui).to_string())),
+        Ok((exit_code, _, err)) => Err(Error::LaunchdError(format!(
+            "`launchctl {}' failed with exit code {:#?}: {}",
+            args.join(" "),
+            exit_code,
+            err
+        ))),
+        Err(e) => Err(e),
     }
 }
 pub fn launchctl(args: &[&str]) -> Result<(i64, String, String)> {
     match launchctl_ok(args)? {
         (0, out, err) => Ok((0, out, err)),
+        (3 | 125, _, err) => Err(Error::LaunchdServiceNotRunning(format!(
+            "`launchctl {}' failed: {}",
+            args.join(" "),
+            err
+        ))),
         (exit_code, _, err) => Err(Error::LaunchdError(format!(
             "`launchctl {}' failed with exit code {:#?}: {}",
             args.join(" "),
