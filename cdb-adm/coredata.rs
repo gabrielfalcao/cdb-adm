@@ -164,7 +164,8 @@ pub fn coredata_fix(quiet: bool) -> Result<()> {
 }
 fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
     use iocore::Path;
-    let screencapture = Path::new("~").to_string();
+    let screencapture = Path::raw("~").try_canonicalize().to_string();
+    let user_preferences = Path::raw("~/Library/Preferences").try_canonicalize();
     vec![
         vec!["delete", "NSGlobalDomain", "NSLinguisticDataAssetsRequested"],
         vec!["delete", "NSGlobalDomain", "NSPreferredWebServices"],
@@ -408,10 +409,172 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
         ],
         vec![
             "write",
-            "/Library/Preferences/com.apple.TimeMachine.plist",
-            "PreferencesVersion",
+            user_preferences.join("com.apple.helpd.plist").to_string().leak(),
+            "PublicSpotlightIndex",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
+            "AppleSelectedInputSources",
+            "-dict",
+            "InputSourceKind",
+            "-string",
+            "Keyboard Layout",
+            "-string",
+            "KeyboardLayout Name",
+            "-string",
+            "USInternational-PC",
+            "KeyboardLayout ID",
             "-integer",
-            "1",
+            "15000",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
+            "AppleEnabledInputSources",
+            "-dict",
+            "InputSourceKind",
+            "-string",
+            "Keyboard Layout",
+            "-string",
+            "KeyboardLayout Name",
+            "-string",
+            "USInternational-PC",
+            "KeyboardLayout ID",
+            "-integer",
+            "15000",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
+            "AppleInputSourceHistory",
+            "-dict",
+            "InputSourceKind",
+            "-string",
+            "Keyboard Layout",
+            "-string",
+            "KeyboardLayout Name",
+            "-string",
+            "USInternational-PC",
+            "KeyboardLayout ID",
+            "-integer",
+            "15000",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
+            "AppleInputSourceHistory",
+            "-array",
+            "-dict",
+            "InputSourceKind",
+            "-string",
+            "Keyboard Layout",
+            "-string",
+            "KeyboardLayout Name",
+            "-string",
+            "USInternational-PC",
+            "KeyboardLayout ID",
+            "-integer",
+            "15000",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.HIToolbox.plist").to_string().leak(),
+            "AppleCurrentKeyboardLayoutInputSourceID",
+            "-string",
+            "com.apple.keylayout.USInternational-PC",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "AppleMiniaturizeOnDoubleClick",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "com.apple.trackpad.forceClick",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "AppleShowScrollBars",
+            "-string",
+            "Always",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "AppleShowScrollBars",
+            "-string",
+            "Always",
+        ],
+        vec![
+            "delete",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "AppleLanguages",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "AppleLanguages",
+            "-array",
+            "en-US",
+        ],
+        vec![
+            "write",
+            user_preferences.join(".GlobalPreferences.plist").to_string().leak(),
+            "ContextMenuGesture",
+            "-integer",
+            "0",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.systempreferences.plist").to_string().leak(),
+            "recentPanes",
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.speech.recognition.AppleSpeechRecognition.CustomCommands.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.businessservicesd.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.remindd.babysitter.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.voicetrigger.notbackedup.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.systempreferences.plist").to_string().leak(),
+            "DSKDesktopPrefPane",
+            "-dict",
+            "UserFolderPaths",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.systempreferences.plist").to_string().leak(),
+            "DSKDesktopPrefPane",
+            "-dict",
+            "UserFolderPaths",
+            "-array",
+            "/Users/gabrielfalcao",
         ],
         vec!["write", "com.apple.Terminal", "StringEncodings", "-array", "4"],
         vec!["write", "com.apple.screensaver", "askForPassword", "-integer", "1"],
@@ -421,11 +584,7 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
         vec!["write", "NSGlobalDomain", "AppleKeyboardUIMode", "-integer", "2"],
         vec!["write", "NSGlobalDomain", "InitialKeyRepeat", "-integer", "1"],
         vec!["write", "NSGlobalDomain", "com.apple.keyboard.fnState", "-integer", "0"],
-        vec![
-            "delete",
-            "NSGlobalDomain",
-            "NSLinguisticDataAssetsRequestedByChecker",
-        ],
+        vec!["delete", "NSGlobalDomain", "NSLinguisticDataAssetsRequestedByChecker"],
         vec![
             "write",
             "NSGlobalDomain",
@@ -433,10 +592,37 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
             "-array",
             "us",
         ],
-        vec!["write", "NSGlobalDomain", "NSWebServicesProviderWebSearch", "-dict", "NSWebServicesProviderWebSearch"],
-        vec!["write", "NSGlobalDomain", "NSSpellCheckerContainerTransitionComplete", "-bool", "NO"],
-        vec!["write", "NSGlobalDomain", "NSSpellCheckerDictionaryContainerTransitionComplete", "-bool", "NO"],
-        vec!["write", "NSGlobalDomain", "NSUserQuotesArray", "-array", "\\U201c", "\\U201d", "\\U2018", "\\U2019"],
+        vec![
+            "write",
+            "NSGlobalDomain",
+            "NSWebServicesProviderWebSearch",
+            "-dict",
+            "NSWebServicesProviderWebSearch",
+        ],
+        vec![
+            "write",
+            "NSGlobalDomain",
+            "NSSpellCheckerContainerTransitionComplete",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "NSGlobalDomain",
+            "NSSpellCheckerDictionaryContainerTransitionComplete",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            "NSGlobalDomain",
+            "NSUserQuotesArray",
+            "-array",
+            "\\U201c",
+            "\\U201d",
+            "\\U2018",
+            "\\U2019",
+        ],
         vec![
             "write",
             "NSGlobalDomain",
@@ -581,6 +767,231 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
             "IncludeInternalDebugMenu",
             "-bool",
             "NO",
+        ],
+        vec![
+            "write",
+            user_preferences
+                .join("com.apple.MobileBluetooth.debug.plist")
+                .to_string()
+                .leak(),
+            "LeDeviceCache",
+            "-dict",
+            "WipeNameOrigin",
+            "bool",
+            "YES",
+        ],
+        vec![
+            "write",
+            user_preferences
+                .join("com.apple.Sharing-Settings.extension.plist")
+                .to_string()
+                .leak(),
+            "com.apple.preferences.sharing.allowFullDiskAccess",
+            "bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            user_preferences
+                .join("com.apple.diagnosticextensionsd.plist")
+                .to_string()
+                .leak(),
+            "directoriesCleanupDone",
+            "bool",
+            "YES",
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.inputAnalytics.IASGenmojiAnalyzer.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.BTServer.plist").to_string().leak(),
+            "defaultPoweredState",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.BTServer.plist").to_string().leak(),
+            "defaultAirplaneModePowerState",
+            "-bool",
+            "NO",
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.googlecode.iterm2.private.plist").to_string().leak(),
+        ],
+        vec!["delete", user_preferences.join("com.apple.shazamd.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.inputAnalytics.IASSRAnalyzer.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.inputAnalytics.IASWTAnalyzer.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.assistant.support.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.EmojiCache.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.facetime.bag.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.AMPLibraryAgent.plist").to_string().leak(),
+        ],
+        vec!["delete", user_preferences.join("com.apple.assistant.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.sharingd.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.Siri.plist").to_string().leak()],
+        vec![
+            "write",
+            user_preferences.join("com.apple.stockholm.plist").to_string().leak(),
+            "RemoteAdminV2",
+            "-bool",
+            "NO",
+        ],
+        vec!["delete", user_preferences.join("com.apple.stockholm.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.remindd.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.EmojiPreferences.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.PhotoBooth.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.homed.notbackedup.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.NewDeviceOutreach.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.NewDeviceOutreach.plist").to_string().leak(),
+        ],
+        vec!["delete", user_preferences.join("ContextStoreAgent.plist").to_string().leak()],
+        vec!["delete", user_preferences.join("com.apple.iTunes.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.Safari.SandboxBroker.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.VideoSubscriberAccount.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.messages.nicknames.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.donotdisturbd.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.AccessibilityHearingNearby.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.weather.sensitive.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.assistant.backedup.plist").to_string().leak(),
+        ],
+        vec!["delete", user_preferences.join("com.apple.iChat.plist").to_string().leak()],
+        vec![
+            "delete",
+            user_preferences.join("com.firebase.FIRInstallations.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.siri.sirisuggestions.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.DuetExpertCenter.AppPredictionExpert.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.mmcs.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.voicememod.plist").to_string().leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences.join("com.apple.preferences.extensions.ShareMenu.plist").to_string().leak(),
+        ],
+        vec![
+            "write",
+            user_preferences.join("com.apple.preferences.extensions.ShareMenu.plist").to_string().leak(),
+            "displayOrder",
+            "com.apple.share.AirDrop.send",
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.newscore2.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.iPod.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.GenerativeFunctions.GenerativeFunctionsInstrumentation.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.apple.knowledge-agent.plist")
+                .to_string()
+                .leak(),
+        ],
+        vec![
+            "delete",
+            user_preferences
+                .join("com.ikmultimedia.Product Manager.plist")
+                .to_string()
+                .leak(),
         ],
     ]
 }

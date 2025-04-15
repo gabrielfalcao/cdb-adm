@@ -144,10 +144,7 @@ pub fn turn_off_system_agent_or_daemon(
             }
             success.push(agent_or_daemon(&n, None, gui));
         },
-        Err(Error::LaunchdServiceNotRunning(e)) =>
-            if !silent_warnings {
-                eprintln!("turn off {}[warning] {}", &n, e);
-            },
+        Err(Error::LaunchdServiceNotRunning(_)) => {},
         Err(e) => {
             // if !quiet {
             //     eprintln!(
@@ -177,10 +174,7 @@ pub fn turn_off_user_agent_or_daemon(
             }
             success.push(agent_or_daemon(&n, uid, gui));
         },
-        Err(Error::LaunchdServiceNotRunning(e)) =>
-            if !silent_warnings {
-                eprintln!("turn off {}[warning] {}", &n, e);
-            },
+        Err(Error::LaunchdServiceNotRunning(_)) => {},
         Err(e) => {
             if !quiet {
                 println!(
