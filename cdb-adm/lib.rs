@@ -17,8 +17,8 @@ pub mod ad_manager;
 use std::collections::BTreeSet;
 
 pub use ad_manager::{
-    boot_out, boot_up, boot_up_system_agent_or_daemon, boot_up_user_agent_or_daemon,
-    list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
+    agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map, boot_out, launchctl,
+    launchctl_ok, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
     turn_off_system_agent_or_daemon, turn_off_user_agent_or_daemon, Uid,
 };
 

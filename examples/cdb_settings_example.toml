@@ -1,0 +1,24 @@
+backup-path="~/Documents/defaults"
+
+[delete]
+domains = [
+    "com.apple.CharacterPaletteIM",
+    "com.apple.CharacterPicker",
+    "com.apple.HIToolbox",
+    "com.apple.cloudd",
+    "com.apple.siriknowledged",
+    "com.google.Keystone.Agent",
+    "com.google.chrome",
+    "com.google.chrome.for.testing",
+    "com.googlecode.iterm2",
+    "com.qtproject",
+    "com.vivaldi.Vivaldi",
+    "org.chromium.Chromium",
+    "org.mozilla.firefox",
+]
+keys = [
+    ["NSGlobalDomain", "com.apple.gms.availability.useCasesWhoseAssetsNotReady",        ],
+    ["NSGlobalDomain", "com.apple.gms.availability.disallowedUseCases"],
+    ["com.apple.Multitouch.preferencesBackup", "22F82", "com.apple.driver.AppleBluetoothMultitouch.trackpad"],
+    ["com.apple.Multitouch.preferencesBackup", "22F82", "com.apple.driver.AppleBluetoothMultitouch.mouse"],
+]

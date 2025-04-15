@@ -5,12 +5,13 @@ use crate::{Error, Result, Uid};
 pub fn turn_off_agent_or_daemon(
     ad: impl std::fmt::Display,
     uid: Option<Uid>,
+    gui: bool,
     silent_warnings: bool,
 ) -> Result<()> {
     // println!("next input turns off '{}'. [ENTER] to continue", agent_or_daemon(&ad, uid.clone()));
     // let mut line = String::new();
     // std::io::stdin().read_line(&mut line).unwrap();
-    match bootout_agent_or_daemon(&ad, uid.clone()) {
+    match bootout_agent_or_daemon(&ad, uid.clone(), gui) {
         Ok(_) => {},
         Err(Error::LaunchdServiceNotRunning(e)) =>
             if !silent_warnings {
@@ -18,7 +19,7 @@ pub fn turn_off_agent_or_daemon(
             },
         Err(e) => return Err(e),
     };
-    match disable_agent_or_daemon(&ad, uid) {
+    match disable_agent_or_daemon(&ad, uid, gui) {
         Ok(_) => {},
         Err(Error::LaunchdServiceNotRunning(e)) =>
             if !silent_warnings {
@@ -29,55 +30,39 @@ pub fn turn_off_agent_or_daemon(
     Ok(())
 }
 
-pub fn agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> String {
+pub fn agent_or_daemon_prefix(uid: Option<Uid>, gui: bool) -> String {
     match uid {
-        Some(uid) => format!("gui/{}/{}", uid, ad),
-        None => format!("system/{}", ad),
+        Some(uid) => format!("{}/{}", if gui { "gui" } else { "user" }, uid),
+        None => format!("system"),
     }
 }
-
-pub fn boot_up_agent_or_daemon(
-    ad: impl std::fmt::Display,
-    uid: Option<Uid>,
-    silent_warnings: bool,
-) -> Result<()> {
-    match bootstrap_agent_or_daemon(&ad, uid.clone()) {
-        Ok(_) => {},
-        Err(Error::LaunchdServiceNotRunning(e)) =>
-            if !silent_warnings {
-                eprintln!("bootstrap {}[warning] {}", &ad, e);
-            },
-        Err(e) => return Err(e),
-    };
-    match enable_agent_or_daemon(&ad, uid) {
-        Ok(_) => {},
-        Err(Error::LaunchdServiceNotRunning(e)) =>
-            if !silent_warnings {
-                eprintln!("enable {}[warning] {}", &ad, e);
-            },
-        Err(e) => return Err(e),
-    };
-    Ok(())
+pub fn agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>, gui: bool) -> String {
+    format!("{}/{}", agent_or_daemon_prefix(uid, gui), ad)
 }
 
-pub fn launchctl(
+pub fn launchctl_act(
     subcommand: impl std::fmt::Display,
     ad: impl std::fmt::Display,
     uid: Option<Uid>,
-) -> Result<i32> {
-    let args = vec![subcommand.to_string(), agent_or_daemon(&ad, uid)];
-    let (exit_code, _, err) = launchctl_ok(
+    gui: bool,
+) -> Result<i64> {
+    let args = vec![subcommand.to_string(), agent_or_daemon(&ad, uid, gui)];
+    let (exit_code, _, _) = launchctl(
         &args
             .iter()
             .filter(|domain| !domain.is_empty())
             .map(|domain| domain.as_str())
             .collect::<Vec<&str>>(),
     )?;
-
     match exit_code {
-        0 => Ok(exit_code.try_into().unwrap_or_default()),
-        3 | 125 => Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid).to_string())),
-        exit_code => Err(Error::LaunchdError(format!(
+        3 | 125 => Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid, gui).to_string())),
+        _ => Ok(exit_code),
+    }
+}
+pub fn launchctl(args: &[&str]) -> Result<(i64, String, String)> {
+    match launchctl_ok(args)? {
+        (0, out, err) => Ok((0, out, err)),
+        (exit_code, _, err) => Err(Error::LaunchdError(format!(
             "`launchctl {}' failed with exit code {:#?}: {}",
             args.join(" "),
             exit_code,
@@ -86,17 +71,19 @@ pub fn launchctl(
     }
 }
 
-pub fn bootout_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
-    Ok(launchctl("bootout", ad, uid)?)
+pub fn bootout_agent_or_daemon(
+    ad: impl std::fmt::Display,
+    uid: Option<Uid>,
+    gui: bool,
+) -> Result<i64> {
+    Ok(launchctl_act("bootout", ad, uid, gui)?)
 }
-pub fn disable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
-    Ok(launchctl("disable", ad, uid)?)
-}
-pub fn bootstrap_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
-    Ok(launchctl("bootstrap", ad, uid)?)
-}
-pub fn enable_agent_or_daemon(ad: impl std::fmt::Display, uid: Option<Uid>) -> Result<i32> {
-    Ok(launchctl("enable", ad, uid)?)
+pub fn disable_agent_or_daemon(
+    ad: impl std::fmt::Display,
+    uid: Option<Uid>,
+    gui: bool,
+) -> Result<i64> {
+    Ok(launchctl_act("disable", ad, uid, gui)?)
 }
 pub fn launchctl_ok(args: &[&str]) -> Result<(i64, String, String)> {
     let mut cmd = Command::new("launchctl");
@@ -113,4 +100,31 @@ pub fn launchctl_ok(args: &[&str]) -> Result<(i64, String, String)> {
         String::from_utf8(output.stdout).unwrap_or_default(),
         String::from_utf8(output.stderr).unwrap_or_default(),
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{agent_or_daemon, agent_or_daemon_prefix, Uid};
+
+    #[test]
+    fn test_agent_or_daemon_prefix() {
+        assert_eq!(agent_or_daemon_prefix(None, false), "system");
+        assert_eq!(agent_or_daemon_prefix(Some(Uid::from(242)), false), "user/242");
+        assert_eq!(agent_or_daemon_prefix(Some(Uid::from(202)), true), "gui/202");
+    }
+    #[test]
+    fn test_agent_or_daemon() {
+        assert_eq!(
+            agent_or_daemon("com.apple.calaccessd", None, false),
+            "system/com.apple.calaccessd"
+        );
+        assert_eq!(
+            agent_or_daemon("com.apple.calaccessd", Some(Uid::from(242)), false),
+            "user/242/com.apple.calaccessd"
+        );
+        assert_eq!(
+            agent_or_daemon("com.apple.calaccessd", Some(Uid::from(202)), true),
+            "gui/202/com.apple.calaccessd"
+        );
+    }
 }

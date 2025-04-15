@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDBSettingsDelete {
-    domains: Vec<String>,
-    keys: Vec<Vec<String>>,
+    pub domains: Vec<String>,
+    pub keys: Vec<Vec<String>>,
 }
 impl CDBSettingsDelete {
     pub fn new() -> CDBSettingsDelete {
@@ -32,13 +32,21 @@ impl CDBSettingsDelete {
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CDBSettings {
+    #[serde(rename(serialize = "backup-path", deserialize = "backup-path"))]
+    #[serde(rename(deserialize = "backup_path"))]
+    backup_path: Option<iocore::Path>,
     delete: CDBSettingsDelete,
 }
 impl CDBSettings {
     pub fn new() -> CDBSettings {
         CDBSettings {
+            backup_path: None,
             delete: CDBSettingsDelete::new(),
         }
+    }
+
+    pub fn backup_path(&self) -> iocore::Path {
+        self.backup_path.clone().unwrap_or_else(|| iocore::Path::cwd()).try_canonicalize()
     }
 
     pub fn from_path(path: &iocore::Path) -> crate::Result<CDBSettings> {
