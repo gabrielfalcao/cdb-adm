@@ -104,7 +104,7 @@
     "com.apple.dt.AutomationModeUI",
     "com.apple.duetexpertd",
     "com.apple.dvdplayback.setregion",
-    // "com.apple.ecosystemanalyticsd",
+    "com.apple.ecosystemanalyticsd",
     "com.apple.eligibilityd",
     "com.apple.email.maild",
     "com.apple.erasecontentsettingshelperd",
