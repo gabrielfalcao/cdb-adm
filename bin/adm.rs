@@ -120,7 +120,7 @@ fn main() -> Result<()> {
                 .collect::<Vec<Vec<String>>>();
             ads.sort_by_key(|service| service[0].to_string());
             let table = Table::new()
-                .headers(&["service", "pid", "status", "domain"])
+                .headers(&["SERVICE", "PID", "STATUS", "DOMAIN"])
                 .alignments(&[Left, Right, Left, Right])
                 .data(&ads)
                 .to_string();
