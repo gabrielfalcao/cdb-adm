@@ -21,7 +21,7 @@ pub enum Command {
 
 #[derive(Args, Debug)]
 pub struct TurnOff {
-    #[arg(short, long, default_value = "501")]
+    #[arg(long, default_value = "501")]
     uid: Uid,
 
     #[arg(short, long)]
@@ -36,7 +36,7 @@ pub struct TurnOff {
     #[arg(short, long)]
     include_non_needed: bool,
 
-    #[arg(short = 'U', long)]
+    #[arg(short = 'u', long)]
     include_system_uids: bool,
 
     #[arg(long)]

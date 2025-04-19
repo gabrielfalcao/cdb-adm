@@ -205,25 +205,38 @@ pub fn turn_off_smart(
         services_set.extend(no_doubles(&NON_NEEDED_SERVICES));
     }
 
-    if !quiet {
-        println!("turning off services");
-    }
-    for (domain, service, pid, _) in
-        list_active_agents_and_daemons(uid, include_system_uids).unwrap()
-    {
-        for name in &services_set {
-            if service.as_str() == name.as_str() {
-                match bootout_and_disable_smart(uid, &domain, &service) {
-                    Ok(_) =>
-                        if !quiet {
-                            println!("{}/{} ({}) turned off", &domain, &service, pid);
-                        },
-                    Err(error) =>
-                        if !quiet {
-                            eprintln!("{}", error)
-                        },
+    let services_to_turn_off = list_active_agents_and_daemons(uid, include_system_uids)
+        .unwrap()
+        .iter()
+        .filter(|(_, service, _, _)| {
+            for name in &services_set {
+                if service.as_str() == name.as_str() {
+                    return true;
                 }
             }
+            false
+        })
+        .map(|(domain, service, pid, _)| (domain.to_string(), service.to_string(), *pid))
+        .collect::<Vec<(String, String, i64)>>();
+    if !services_to_turn_off.is_empty() {
+        if !quiet {
+            println!("turning off services");
+        }
+    } else {
+        if !quiet {
+            println!("ok");
+        }
+    }
+    for (domain, service, pid) in services_to_turn_off {
+        match bootout_and_disable_smart(uid, &domain, &service) {
+            Ok(_) =>
+                if !quiet {
+                    println!("{}/{} ({}) turned off", &domain, &service, pid);
+                },
+            Err(error) =>
+                if !quiet {
+                    eprintln!("{}", error)
+                },
         }
     }
 }
