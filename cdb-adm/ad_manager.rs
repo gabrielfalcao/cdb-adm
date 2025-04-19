@@ -16,7 +16,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 251] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 274] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off(
@@ -210,8 +210,16 @@ pub fn turn_off_smart(
         .iter()
         .filter(|(_, service, _, _)| {
             for name in &services_set {
-                if service.as_str() == name.as_str() {
+                if service.as_str().contains(name.as_str()) {
                     return true;
+                } else {
+                    if service.as_str().contains(name.as_str()) {
+                        eprintln!("[info] {:#?} contains {:#?}", service.as_str(), name.as_str());
+                        return true;
+                    } else if name.as_str().contains(service.as_str()) {
+                        eprintln!("[info] {:#?} contains {:#?}", name.as_str(), service.as_str());
+                        return true;
+                    }
                 }
             }
             false

@@ -42,3 +42,4 @@ security-framework = "3.2.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 toml = "0.8.20"
+verynicetable = "0.6.2"

@@ -8,4 +8,4 @@ timestamp="$(t16g)"
 rm -f turn-off.*.*.log
 stderr_log="turn-off.${timestamp}.err.log"
 stdout_log="turn-off.${timestamp}.out.log"
-1>$stdout_log 2>$stderr_log sudo adm turn-off -vi
+1>$stdout_log 2>$stderr_log adm turn-off -vi

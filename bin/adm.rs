@@ -1,8 +1,11 @@
+use std::fmt::Alignment::{Left, Right};
+
 use cdb_adm::{
     boot_out, list_active_agents_and_daemons, list_agents_and_daemons,
     list_agents_and_daemons_paths, turn_off_mdutil, turn_off_smart, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
+use verynicetable::Table;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = "Agents and Daemons Manager")]
@@ -103,9 +106,26 @@ fn main() -> Result<()> {
             },
         Command::Status(_) => {
             let uid = Uid::from(iocore::User::id()?.uid);
-            for (domain, service, pid, _) in list_active_agents_and_daemons(&uid, true)? {
-                println!("{}\t{}\t{}", service, domain, pid);
-            }
+            let mut ads = list_active_agents_and_daemons(&uid, true)?
+                .iter()
+                .filter(|(_, _, pid, _)| *pid != 0)
+                .map(|(domain, service, pid, status)| {
+                    vec![
+                        service.to_string(),
+                        pid.to_string(),
+                        status.map(|h| h.to_string()).unwrap_or_else(|| "-".to_string()),
+                        domain.to_string(),
+                    ]
+                })
+                .collect::<Vec<Vec<String>>>();
+            ads.sort_by_key(|service| service[0].to_string());
+            let table = Table::new()
+                .headers(&["service", "pid", "status", "domain"])
+                .alignments(&[Left, Right, Left, Right])
+                .data(&ads)
+                .to_string();
+
+            print!("{table}");
         },
         Command::TurnOff(args) => {
             turn_off_mdutil()?;
