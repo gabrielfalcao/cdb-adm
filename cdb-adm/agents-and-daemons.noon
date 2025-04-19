@@ -104,7 +104,6 @@
     "com.apple.dt.AutomationModeUI",
     "com.apple.duetexpertd",
     "com.apple.dvdplayback.setregion",
-    "com.apple.ecosystemanalyticsd",
     "com.apple.eligibilityd",
     "com.apple.email.maild",
     "com.apple.erasecontentsettingshelperd",
@@ -153,9 +152,9 @@
     "com.apple.mobiletimerd",
     "com.apple.modelcatalogd",
     "com.apple.modelmanagerd",
-    "com.apple.neagent", // network extensions agent
+    // "com.apple.neagent", // network extensions agent
     "com.apple.nearbyd",
-    "com.apple.nehelper", // network extensions helper
+    // "com.apple.nehelper", // network extensions helper
     "com.apple.newsd",
     "com.apple.nfcd",
     "com.apple.nfsconf",
@@ -258,9 +257,10 @@
     "com.openssh.sshd",
     "org.apache.httpd",
     "org.cups.cups-lpd",
-    "com.apple.managedappdistributionagent",
-    "com.apple.managedappdistributiond",
-    "com.apple.scopedbookmarksagent.xpc",
+    // "com.apple.managedappdistributionagent",
+    // "com.apple.managedappdistributiond",
+    // "com.apple.ecosystemanalyticsd",
+    // "com.apple.scopedbookmarksagent.xpc",
     // "com.apple.managedcorespotlightd",
     // "com.apple.mobile.NRDUpdated",
     // "com.apple.mobile.keybagd",
