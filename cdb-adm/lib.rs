@@ -21,8 +21,9 @@ pub use ad_manager::{
     agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map, boot_out,
     extract_service_info_opt, extract_service_name, launchctl, launchctl_ok,
     list_active_agents_and_daemons, list_active_agents_and_daemons_by_domain,
-    list_agents_and_daemons, list_agents_and_daemons_paths, parse_services, turn_off,
-    turn_off_system_agent_or_daemon, turn_off_user_agent_or_daemon, Uid,
+    list_agents_and_daemons, list_agents_and_daemons_paths, parse_services, salient_system_uids,
+    system_uids, turn_off, turn_off_smart, turn_off_system_agent_or_daemon,
+    turn_off_user_agent_or_daemon, Uid,
 };
 
 pub fn no_doubles(list: &[&str]) -> Vec<String> {

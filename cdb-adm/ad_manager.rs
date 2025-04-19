@@ -7,7 +7,7 @@ use std::collections::BTreeSet;
 
 pub use adm::{
     agents_and_daemons_path_map, list_agents_and_daemons, list_agents_and_daemons_paths,
-    system_uids, Uid,
+    salient_system_uids, system_uids, Uid,
 };
 pub use launchctl::{
     agent_or_daemon, agent_or_daemon_prefix, bootout_agent_or_daemon, launchctl, launchctl_ok,
@@ -15,6 +15,7 @@ pub use launchctl::{
     turn_off_agent_or_daemon,
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
+
 pub const NON_NEEDED_SERVICES: [&'static str; 251] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
@@ -190,31 +191,65 @@ pub fn turn_off_user_agent_or_daemon(
     }
 }
 
+pub fn turn_off_smart(
+    uid: &Uid,
+    quiet: bool,
+    services: Vec<String>,
+    include_non_needed: bool,
+    include_system_uids: bool,
+) {
+    let mut services_set = BTreeSet::<String>::new();
 
-// pub fn turn_off_smart(
-//     quiet: bool,
-//     services: Vec<String>,
-//     include_non_needed: bool,
-// ) -> (Vec<String>, Vec<(String, Error)>) {
-//     let mut errors = Vec::<(String, Error)>::new();
-//     let mut success = Vec::<String>::new();
-//     let mut services_set = BTreeSet::<String>::new();
+    services_set.extend(services);
+    if include_non_needed {
+        services_set.extend(no_doubles(&NON_NEEDED_SERVICES));
+    }
 
-//     services_set.extend(services);
-//     if include_non_needed {
-//         services_set.extend(no_doubles(&NON_NEEDED_SERVICES));
-//     }
+    if !quiet {
+        println!("turning off services");
+    }
+    for (domain, service, pid, _) in
+        list_active_agents_and_daemons(uid, include_system_uids).unwrap()
+    {
+        for name in &services_set {
+            if service.as_str() == name.as_str() {
+                match bootout_and_disable_smart(uid, &domain, &service) {
+                    Ok(_) =>
+                        if !quiet {
+                            println!("{}/{} ({}) turned off", &domain, &service, pid);
+                        },
+                    Err(error) =>
+                        if !quiet {
+                            eprintln!("{}", error)
+                        },
+                }
+            }
+        }
+    }
+}
 
-//     if !quiet {
-//         println!("turning off services");
-//     }
-//     let mut services_to_turn_off = Vec::<String>::new();
-//     for (service_target, (dom)) in list_active_agents_and_daemons_by_domain()? {
-//         for name in services_set {
-
-//         }
-//     }
-
-
-//     (success, errors)
-// }
+fn launchctl_bootout_or_disable_smart(
+    subcommand: &str,
+    service_target: &str,
+    as_root: bool,
+) -> std::result::Result<(), String> {
+    let args = vec![subcommand.to_string(), service_target.to_string()];
+    match launchctl_ok(crate::to_slice_str!(args), as_root) {
+        Ok((0, _, _)) => Ok(()),
+        Ok((exit_code, _, err)) =>
+            Err(format!("`launchctl {}' failed with {}: {}", args.join(" "), exit_code, err)),
+        Err(err) => Err(err.to_string()),
+    }?;
+    Ok(())
+}
+fn bootout_and_disable_smart(
+    uid: &Uid,
+    domain: &str,
+    service: &str,
+) -> std::result::Result<(), String> {
+    let as_root = !domain.ends_with(&uid.to_string());
+    let services_target = format!("{}/{}", domain, service);
+    launchctl_bootout_or_disable_smart("bootout", services_target.as_str(), as_root)?;
+    launchctl_bootout_or_disable_smart("disable", services_target.as_str(), as_root)?;
+    Ok(())
+}

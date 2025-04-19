@@ -1,8 +1,6 @@
 use std::process::{Command, Stdio};
 
-use crate::{
-    extract_service_info_opt, parse_services, to_slice_str, Error, Result, Uid,
-};
+use crate::{parse_services, to_slice_str, Error, Result, Uid};
 
 pub fn turn_off_agent_or_daemon(
     ad: impl std::fmt::Display,
@@ -153,23 +151,8 @@ pub fn launchctl_print(domain: &str) -> Result<String> {
             "`launchctl {}' failed with exit code {:#?}: {}\n{}",
             args.join(" "),
             exit_code,
-            err, out
-        ))),
-    }
-}
-pub fn launchctl_list(as_root: bool) -> Result<Vec<String>> {
-    let (exit_code, out, err) = launchctl_ok(&["list"], as_root)?;
-    if exit_code == 0 {
-        return Ok(out
-            .lines()
-            .filter(|h| !h.is_empty())
-            .map(|h| h.trim().to_string())
-            .collect::<Vec<String>>());
-    }
-    match exit_code {
-        exit_code => Err(Error::LaunchdError(format!(
-            "`launchctl list' failed with exit code {:#?}: {}\n{}",
-            exit_code, err, out
+            err,
+            out
         ))),
     }
 }
@@ -190,25 +173,30 @@ pub fn list_active_agents_and_daemons_by_domain(
     Ok(map)
 }
 pub fn list_active_agents_and_daemons(
-) -> crate::Result<std::collections::BTreeMap<String, (i64, Option<i64>)>> {
-    let user = iocore::User::id()?;
-    if user.uid == 0 {
-        return Err(Error::IOError(format!("cannot run as root")));
+    uid: &Uid,
+    include_system_uids: bool,
+) -> crate::Result<Vec<(String, String, i64, Option<i64>)>> {
+    let mut services = Vec::<(String, String, i64, Option<i64>)>::new();
+    let mut domains = vec![
+        agent_or_daemon_prefix(None, false),
+        agent_or_daemon_prefix(Some(uid.clone()), false),
+        agent_or_daemon_prefix(Some(uid.clone()), true),
+    ];
+    if include_system_uids {
+        for suid in crate::salient_system_uids() {
+            domains.push(agent_or_daemon_prefix(Some(suid.clone()), false));
+            domains.push(agent_or_daemon_prefix(Some(suid.clone()), true));
+        }
     }
-    let mut map = std::collections::BTreeMap::<String, (i64, Option<i64>)>::new();
-    for line in launchctl_list(false)? {
-        let (pid, status, service) = extract_service_info_opt(line.as_str()).ok_or_else(|| {
-            Error::ParseError(format!("service name not found in {:#?}", line.as_str()))
-        })?;
-        map.insert(format!("{}/{}", &user.uid, &service), (pid, status));
+    for domain in domains {
+        for (pid, status, service) in parse_services(&match launchctl_print(&domain) {
+            Ok(services) => services,
+            Err(_) => continue,
+        })? {
+            services.push((domain.to_string(), service.to_string(), pid, status));
+        }
     }
-    for line in launchctl_list(true)? {
-        let (pid, status, service) = extract_service_info_opt(line.as_str()).ok_or_else(|| {
-            Error::ParseError(format!("service name not found in {:#?}", line.as_str()))
-        })?;
-        map.insert(format!("system/{}", &service), (pid, status));
-    }
-    Ok(map)
+    Ok(services)
 }
 
 #[cfg(test)]

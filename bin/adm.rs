@@ -1,6 +1,6 @@
 use cdb_adm::{
-    boot_out, list_active_agents_and_daemons_by_domain, list_agents_and_daemons,
-    list_agents_and_daemons_paths, turn_off, turn_off_mdutil, Result, Uid,
+    boot_out, list_active_agents_and_daemons, list_agents_and_daemons,
+    list_agents_and_daemons_paths, turn_off_mdutil, turn_off_smart, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 
@@ -22,13 +22,10 @@ pub enum Command {
 #[derive(Args, Debug)]
 pub struct TurnOff {
     #[arg(short, long, default_value = "501")]
-    uid: Option<Uid>,
+    uid: Uid,
 
-    #[arg(short = 's', long)]
-    user_services: Vec<String>,
-
-    #[arg(short = 'S', long)]
-    system_services: Vec<String>,
+    #[arg(short, long)]
+    services: Vec<String>,
 
     #[arg(short, long)]
     verbose: bool,
@@ -106,29 +103,19 @@ fn main() -> Result<()> {
             },
         Command::Status(_) => {
             let uid = Uid::from(iocore::User::id()?.uid);
-            let by_domain = list_active_agents_and_daemons_by_domain(&uid)?;
-            // let active = list_agents_and_daemons()?;
-            println!("{}", serde_json::to_string_pretty(&by_domain)?);
+            for (domain, service, pid, _) in list_active_agents_and_daemons(&uid, true)? {
+                println!("{}\t{}\t{}", service, domain, pid);
+            }
         },
         Command::TurnOff(args) => {
             turn_off_mdutil()?;
-            let (success, errors) = turn_off(
-                args.uid.clone(),
-                args.gui,
+            turn_off_smart(
+                &args.uid,
                 !args.verbose,
-                !args.display_warnings,
-                args.user_services.clone(),
-                args.system_services.clone(),
+                args.services,
                 args.include_non_needed,
                 args.include_system_uids,
             );
-
-            if success.len() > 0 {
-                println!("{} agents or daemons turned off:\n{}", success.len(), success.join("\n"));
-            }
-            if errors.len() > 0 {
-                println!("{} agents or daemons might be already turned off", errors.len(),);
-            }
         },
         Command::BootOut(args) => {
             let (success, errors) =

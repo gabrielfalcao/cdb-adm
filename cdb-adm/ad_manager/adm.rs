@@ -1,4 +1,4 @@
-pub struct Uid(u64);
+pub struct Uid(pub u64);
 impl Default for Uid {
     fn default() -> Uid {
         Uid(501)
@@ -152,7 +152,13 @@ pub fn determine_agent_or_daemon_label(
 }
 
 pub fn system_uids() -> Vec<Option<Uid>> {
-    [
+    salient_system_uids()
+        .iter()
+        .map(|uid| Some(uid.clone()))
+        .collect::<Vec<Option<Uid>>>()
+}
+pub fn salient_system_uids() -> Vec<Uid> {
+    vec![
         Uid(0),   // root
         Uid(55),  // _appleevents - Apple Events
         Uid(88),  // _windowserver - WindowServer
@@ -163,9 +169,6 @@ pub fn system_uids() -> Vec<Option<Uid>> {
         Uid(242), // _nsurlsessiond - NSURLSession Daemon
         Uid(262), // _cmiodalassistants - CoreMedia IO Assistants User
     ]
-    .iter()
-    .map(|uid| Some(uid.clone()))
-    .collect::<Vec<Option<Uid>>>()
 }
 
 pub fn agents_and_daemons_path_map(
