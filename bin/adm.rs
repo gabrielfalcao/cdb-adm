@@ -1,6 +1,6 @@
 use cdb_adm::{
-    boot_out, escalate, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
-    turn_off_mdutil, Result, Uid,
+    boot_out, list_active_agents_and_daemons_by_domain, list_agents_and_daemons,
+    list_agents_and_daemons_paths, turn_off, turn_off_mdutil, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 
@@ -16,6 +16,7 @@ pub enum Command {
     List(List),
     TurnOff(TurnOff),
     BootOut(BootOut),
+    Status(Status),
 }
 
 #[derive(Args, Debug)]
@@ -78,6 +79,8 @@ pub struct List {
     #[arg(short, long)]
     pub gui: bool,
 }
+#[derive(Args, Debug)]
+pub struct Status {}
 
 fn main() -> Result<()> {
     let args = Cli::parse();
@@ -101,8 +104,13 @@ fn main() -> Result<()> {
             } {
                 println!("{}", &agent_or_daemon);
             },
+        Command::Status(_) => {
+            let uid = Uid::from(iocore::User::id()?.uid);
+            let by_domain = list_active_agents_and_daemons_by_domain(&uid)?;
+            // let active = list_agents_and_daemons()?;
+            println!("{}", serde_json::to_string_pretty(&by_domain)?);
+        },
         Command::TurnOff(args) => {
-            escalate()?;
             turn_off_mdutil()?;
             let (success, errors) = turn_off(
                 args.uid.clone(),
@@ -123,7 +131,6 @@ fn main() -> Result<()> {
             }
         },
         Command::BootOut(args) => {
-            escalate()?;
             let (success, errors) =
                 boot_out(args.uid.clone(), args.gui, !args.verbose, !args.display_warnings);
 

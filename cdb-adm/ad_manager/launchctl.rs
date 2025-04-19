@@ -1,6 +1,8 @@
 use std::process::{Command, Stdio};
 
-use crate::{Error, Result, Uid};
+use crate::{
+    extract_service_info_opt, parse_services, to_slice_str, Error, Result, Uid,
+};
 
 pub fn turn_off_agent_or_daemon(
     ad: impl std::fmt::Display,
@@ -47,27 +49,37 @@ pub fn launchctl_act(
     gui: bool,
 ) -> Result<i64> {
     let args = vec![subcommand.to_string(), agent_or_daemon(&ad, uid, gui)];
-    match launchctl(
+    let (exit_code, out, err) = launchctl(
         &args
             .iter()
             .filter(|domain| !domain.is_empty())
             .map(|domain| domain.as_str())
             .collect::<Vec<&str>>(),
-    ) {
-        Ok((0, _, _)) => Ok(0),
-        Ok((3 | 125, _, _)) =>
-            Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid, gui).to_string())),
-        Ok((exit_code, _, err)) => Err(Error::LaunchdError(format!(
+        uid.is_none(),
+    )?;
+    if exit_code == 0 {
+        return Ok(0);
+    }
+    eprintln!(
+        "<'launchctl {}'>{}: <stdout>{}</stdout><stderr>{}</stderr>",
+        args.join(" "),
+        exit_code,
+        out.trim(),
+        err.trim()
+    );
+
+    match exit_code {
+        3 | 125 => Err(Error::LaunchdServiceNotRunning(agent_or_daemon(&ad, uid, gui).to_string())),
+        exit_code => Err(Error::LaunchdError(format!(
             "`launchctl {}' failed with exit code {:#?}: {}",
             args.join(" "),
             exit_code,
             err
         ))),
-        Err(e) => Err(e),
     }
 }
-pub fn launchctl(args: &[&str]) -> Result<(i64, String, String)> {
-    match launchctl_ok(args)? {
+pub fn launchctl(args: &[&str], as_root: bool) -> Result<(i64, String, String)> {
+    match launchctl_ok(args, as_root)? {
         (0, out, err) => Ok((0, out, err)),
         (3 | 125, _, err) => Err(Error::LaunchdServiceNotRunning(format!(
             "`launchctl {}' failed: {}",
@@ -97,10 +109,27 @@ pub fn disable_agent_or_daemon(
 ) -> Result<i64> {
     Ok(launchctl_act("disable", ad, uid, gui)?)
 }
-pub fn launchctl_ok(args: &[&str]) -> Result<(i64, String, String)> {
-    let mut cmd = Command::new("launchctl");
+pub fn launchctl_ok(args: &[&str], as_root: bool) -> Result<(i64, String, String)> {
+    let username = if as_root {
+        "root".to_string()
+    } else {
+        let user = iocore::User::id()?;
+        if user.uid == 0 {
+            return Err(Error::IOError(format!("cannot run launchctl as non-root as root")));
+        } else {
+            user.name.to_string()
+        }
+    };
+    let args = vec![
+        "su".to_string(),
+        "-l".to_string(),
+        username,
+        "-c".to_string(),
+        format!("launchctl {}", args.join(" ")),
+    ];
+    let mut cmd = Command::new("sudo");
     let cmd = cmd.current_dir("/System");
-    let cmd = cmd.args(args);
+    let cmd = cmd.args(to_slice_str!(args));
     let cmd = cmd.stdin(Stdio::null());
     let cmd = cmd.stdout(Stdio::piped());
     let cmd = cmd.stderr(Stdio::piped());
@@ -112,6 +141,74 @@ pub fn launchctl_ok(args: &[&str]) -> Result<(i64, String, String)> {
         String::from_utf8(output.stdout).unwrap_or_default(),
         String::from_utf8(output.stderr).unwrap_or_default(),
     ))
+}
+pub fn launchctl_print(domain: &str) -> Result<String> {
+    let args = vec!["print".to_string(), domain.to_string()];
+    let (exit_code, out, err) = launchctl_ok(to_slice_str!(args), false)?;
+    if exit_code == 0 {
+        return Ok(out);
+    }
+    match exit_code {
+        exit_code => Err(Error::LaunchdError(format!(
+            "`launchctl {}' failed with exit code {:#?}: {}\n{}",
+            args.join(" "),
+            exit_code,
+            err, out
+        ))),
+    }
+}
+pub fn launchctl_list(as_root: bool) -> Result<Vec<String>> {
+    let (exit_code, out, err) = launchctl_ok(&["list"], as_root)?;
+    if exit_code == 0 {
+        return Ok(out
+            .lines()
+            .filter(|h| !h.is_empty())
+            .map(|h| h.trim().to_string())
+            .collect::<Vec<String>>());
+    }
+    match exit_code {
+        exit_code => Err(Error::LaunchdError(format!(
+            "`launchctl list' failed with exit code {:#?}: {}\n{}",
+            exit_code, err, out
+        ))),
+    }
+}
+pub fn list_active_agents_and_daemons_by_domain(
+    uid: &Uid,
+) -> crate::Result<std::collections::BTreeMap<String, (i64, Option<i64>)>> {
+    let mut map = std::collections::BTreeMap::<String, (i64, Option<i64>)>::new();
+    let domains = vec![
+        agent_or_daemon_prefix(None, false),
+        agent_or_daemon_prefix(Some(uid.clone()), false),
+        agent_or_daemon_prefix(Some(uid.clone()), true),
+    ];
+    for domain in domains {
+        for (pid, status, service) in parse_services(&launchctl_print(&domain)?)? {
+            map.insert(format!("{}/{}", domain.to_string(), service.to_string()), (pid, status));
+        }
+    }
+    Ok(map)
+}
+pub fn list_active_agents_and_daemons(
+) -> crate::Result<std::collections::BTreeMap<String, (i64, Option<i64>)>> {
+    let user = iocore::User::id()?;
+    if user.uid == 0 {
+        return Err(Error::IOError(format!("cannot run as root")));
+    }
+    let mut map = std::collections::BTreeMap::<String, (i64, Option<i64>)>::new();
+    for line in launchctl_list(false)? {
+        let (pid, status, service) = extract_service_info_opt(line.as_str()).ok_or_else(|| {
+            Error::ParseError(format!("service name not found in {:#?}", line.as_str()))
+        })?;
+        map.insert(format!("{}/{}", &user.uid, &service), (pid, status));
+    }
+    for line in launchctl_list(true)? {
+        let (pid, status, service) = extract_service_info_opt(line.as_str()).ok_or_else(|| {
+            Error::ParseError(format!("service name not found in {:#?}", line.as_str()))
+        })?;
+        map.insert(format!("system/{}", &service), (pid, status));
+    }
+    Ok(map)
 }
 
 #[cfg(test)]

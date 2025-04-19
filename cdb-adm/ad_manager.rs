@@ -2,6 +2,7 @@ use crate::{no_doubles, Error};
 
 mod adm;
 mod launchctl;
+mod parser;
 use std::collections::BTreeSet;
 
 pub use adm::{
@@ -10,10 +11,11 @@ pub use adm::{
 };
 pub use launchctl::{
     agent_or_daemon, agent_or_daemon_prefix, bootout_agent_or_daemon, launchctl, launchctl_ok,
+    list_active_agents_and_daemons, list_active_agents_and_daemons_by_domain,
     turn_off_agent_or_daemon,
 };
-
-pub const NON_NEEDED_SERVICES: [&'static str; 254] = include!("agents-and-daemons.noon");
+pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
+pub const NON_NEEDED_SERVICES: [&'static str; 251] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off(
@@ -187,3 +189,32 @@ pub fn turn_off_user_agent_or_daemon(
         },
     }
 }
+
+
+// pub fn turn_off_smart(
+//     quiet: bool,
+//     services: Vec<String>,
+//     include_non_needed: bool,
+// ) -> (Vec<String>, Vec<(String, Error)>) {
+//     let mut errors = Vec::<(String, Error)>::new();
+//     let mut success = Vec::<String>::new();
+//     let mut services_set = BTreeSet::<String>::new();
+
+//     services_set.extend(services);
+//     if include_non_needed {
+//         services_set.extend(no_doubles(&NON_NEEDED_SERVICES));
+//     }
+
+//     if !quiet {
+//         println!("turning off services");
+//     }
+//     let mut services_to_turn_off = Vec::<String>::new();
+//     for (service_target, (dom)) in list_active_agents_and_daemons_by_domain()? {
+//         for name in services_set {
+
+//         }
+//     }
+
+
+//     (success, errors)
+// }

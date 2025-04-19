@@ -1118,16 +1118,3 @@ pub fn defaults_import_json(domain: impl std::fmt::Display, json: serde_json::Va
     }
     Ok(())
 }
-
-#[macro_export]
-macro_rules! to_vec_string {
-    ($slice:expr) => {
-        $slice.iter().map(|j| j.to_string()).collect::<Vec<String>>()
-    };
-}
-#[macro_export]
-macro_rules! to_slice_str {
-    ($vec_string:expr) => {
-        &$vec_string.iter().map(|j| j.as_str()).collect::<Vec<&str>>()
-    };
-}

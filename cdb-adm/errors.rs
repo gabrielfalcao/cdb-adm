@@ -13,6 +13,7 @@ pub enum Error {
     PlistError(String),
     TomlError(String),
     CoreDataError(String),
+    ParseError(String),
 }
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -30,6 +31,7 @@ impl Display for Error {
                 Self::PlistError(e) => e.to_string(),
                 Self::TomlError(e) => e.to_string(),
                 Self::CoreDataError(e) => e.to_string(),
+                Self::ParseError(e) => e.to_string(),
             }
         )
     }
@@ -47,6 +49,7 @@ impl Error {
             Error::PlistError(_) => "PlistError",
             Error::TomlError(_) => "TomlError",
             Error::CoreDataError(_) => "CoreDataError",
+            Error::ParseError(_) => "ParseError",
         }
         .to_string()
     }

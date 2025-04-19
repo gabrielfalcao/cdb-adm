@@ -22,6 +22,11 @@ impl From<Option<u64>> for Uid {
         }
     }
 }
+impl From<i32> for Uid {
+    fn from(u: i32) -> Uid {
+        Uid(u as u64)
+    }
+}
 impl Copy for Uid {}
 impl Clone for Uid {
     fn clone(&self) -> Uid {
@@ -43,6 +48,11 @@ impl std::fmt::Display for Uid {
 impl std::fmt::Debug for Uid {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "Uid({})", self.0)
+    }
+}
+impl From<u32> for Uid {
+    fn from(u: u32) -> Uid {
+        Uid(u as u64)
     }
 }
 

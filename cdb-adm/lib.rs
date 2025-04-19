@@ -18,8 +18,10 @@ pub mod ad_manager;
 use std::collections::BTreeSet;
 
 pub use ad_manager::{
-    agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map, boot_out, launchctl,
-    launchctl_ok, list_agents_and_daemons, list_agents_and_daemons_paths, turn_off,
+    agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map, boot_out,
+    extract_service_info_opt, extract_service_name, launchctl, launchctl_ok,
+    list_active_agents_and_daemons, list_active_agents_and_daemons_by_domain,
+    list_agents_and_daemons, list_agents_and_daemons_paths, parse_services, turn_off,
     turn_off_system_agent_or_daemon, turn_off_user_agent_or_daemon, Uid,
 };
 
@@ -31,11 +33,15 @@ pub fn no_doubles(list: &[&str]) -> Vec<String> {
     no_doubles.iter().map(|o| o.to_string()).collect::<Vec<String>>()
 }
 
-pub fn escalate() -> Result<()> {
-    let user = iocore::User::id()?;
-    if user.name() == "root" && user.uid() == 0 {
-        Ok(())
-    } else {
-        Err(Error::IOError(format!("{}[uid {}] is not root", &user.name, &user.uid)))
-    }
+#[macro_export]
+macro_rules! to_vec_string {
+    ($slice:expr) => {
+        $slice.iter().map(|j| j.to_string()).collect::<Vec<String>>()
+    };
+}
+#[macro_export]
+macro_rules! to_slice_str {
+    ($vec_string:expr) => {
+        &$vec_string.iter().map(|j| j.as_str()).collect::<Vec<&str>>()
+    };
 }
