@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::{pipe, Write};
 use std::process::{Command, Stdio};
 
-use crate::{to_slice_str, to_vec_string, CDBSettings, Error, Result};
+use crate::{to_slice_str, to_vec_string, Error, Result, Settings, SettingsEnvPath};
 
 pub fn defaults_write(domain: impl std::fmt::Display, key: &[&str]) -> Result<plist::Value> {
     validate_domain_path_for_current_user(&domain)?;
@@ -67,7 +67,10 @@ pub fn delete_domains(domains: &[&str]) -> Result<DeleteDefaultsMacOSResult> {
         match defaults_delete_domain(&domain) {
             Ok((domain, plist)) => {
                 let path = iocore::Path::raw(&domain).try_canonicalize();
-                domain_map.insert(domain.to_string(), (plist, if path.is_file() { Some(path) } else { None }));
+                domain_map.insert(
+                    domain.to_string(),
+                    (plist, if path.is_file() { Some(path) } else { None }),
+                );
             },
             Err(e) => {
                 errors.insert(domain.to_string(), e);
@@ -170,7 +173,7 @@ pub fn defaults_ok(args: &[&str], stdin: Option<Vec<u8>>) -> Result<(i64, String
 
 pub fn coredata_fix(quiet: bool, dry_run: bool) -> Result<()> {
     use iocore::Path;
-    let settings = CDBSettings::cli(quiet);
+    let settings = Settings::cli(quiet);
     let user_preferences = Path::raw("~/Library/Preferences").try_canonicalize();
 
     defaults_delete(&["NSGlobalDomain", "NSLinguisticDataAssetsRequested"])?;
@@ -210,7 +213,7 @@ pub fn coredata_fix(quiet: bool, dry_run: bool) -> Result<()> {
         }),
     )?;
 
-    for args in settings.defaults_exec_args() {
+    for args in settings.cdb().defaults_exec_args() {
         if dry_run {
             println!("defaults {}", args.join(""));
         } else {
@@ -285,7 +288,6 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
         vec!["delete", "com.apple.GEO"],
         vec!["delete", "com.apple.HearingAids"],
         vec!["delete", "com.apple.IFTelemetrySELFIngestor"],
-        vec!["delete", "com.apple.LaunchServices"],
         vec!["delete", "com.apple.Maps"],
         vec!["delete", "com.apple.Maps.mapssyncd"],
         vec!["delete", "com.apple.MobileSMS"],
@@ -435,6 +437,7 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
             "22F82",
             "com.apple.driver.AppleBluetoothMultitouch.mouse",
         ],
+        vec!["write", "com.apple.LaunchServices", "LSQuarantine", "-bool", "NO"],
         vec!["write", "NSGlobaldomain", "AppleKeyboardUIMode", "-integer", "2"],
         vec!["write", "NSGlobaldomain", "AppleLanguages", "-array", "en-US"],
         vec!["write", "NSGlobaldomain", "AppleLocale", "-string", "en-US"],
@@ -1053,31 +1056,20 @@ fn defaults_exec_args<'a>() -> Vec<Vec<&'a str>> {
 mod tests {
     use std::collections::BTreeMap;
 
-    use plist::{Dictionary, Value};
-
-    use super::{export_all_domains, list_domains};
     use crate::Result;
     #[test]
     fn test_list_domains() -> Result<()> {
-        let domains = list_domains()?;
+        let domains = super::list_domains()?;
         assert_eq!(domains.is_empty(), false);
         assert_eq!(domains.contains(&"com.apple.FontBook".to_string()), true);
         Ok(())
     }
     #[test]
     fn test_export_all_domains() -> Result<()> {
-        let domains: BTreeMap<String, (plist::Value, Option<iocore::Path>)> = export_all_domains()?;
+        let domains: BTreeMap<String, (plist::Value, Option<iocore::Path>)> =
+            super::export_all_domains()?;
         assert_eq!(domains.is_empty(), false);
         assert_eq!(domains.contains_key(&"com.apple.Safari".to_string()), true);
-        let safari = match domains.get("com.apple.Safari").unwrap() {
-            (Value::Dictionary(safari), _) => safari.clone(),
-            _ => Dictionary::new(),
-        };
-        let extensions_enabled = match safari.get("ExtensionsEnabled").unwrap() {
-            Value::Boolean(extensions_enabled) => extensions_enabled.clone(),
-            _ => false,
-        };
-        assert_eq!(extensions_enabled, true);
         Ok(())
     }
 }

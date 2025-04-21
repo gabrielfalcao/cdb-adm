@@ -140,8 +140,11 @@ pub fn launchctl_ok(args: &[&str], as_root: bool) -> Result<(i64, String, String
         String::from_utf8(output.stderr).unwrap_or_default(),
     ))
 }
-pub fn launchctl_print(domain: &str) -> Result<String> {
-    let args = vec!["print".to_string(), domain.to_string()];
+pub fn launchctl_print(domain: &str, disabled: bool) -> Result<String> {
+    let args = vec![
+        if disabled { "print-disabled" } else { "print" }.to_string(),
+        domain.to_string(),
+    ];
     let (exit_code, out, err) = launchctl_ok(to_slice_str!(args), false)?;
     if exit_code == 0 {
         return Ok(out);
@@ -156,27 +159,14 @@ pub fn launchctl_print(domain: &str) -> Result<String> {
         ))),
     }
 }
-pub fn list_active_agents_and_daemons_by_domain(
-    uid: &Uid,
-) -> crate::Result<std::collections::BTreeMap<String, (i64, Option<i64>)>> {
-    let mut map = std::collections::BTreeMap::<String, (i64, Option<i64>)>::new();
-    let domains = vec![
-        agent_or_daemon_prefix(None, false),
-        agent_or_daemon_prefix(Some(uid.clone()), false),
-        agent_or_daemon_prefix(Some(uid.clone()), true),
-    ];
-    for domain in domains {
-        for (pid, status, service) in parse_services(&launchctl_print(&domain)?)? {
-            map.insert(format!("{}/{}", domain.to_string(), service.to_string()), (pid, status));
-        }
-    }
-    Ok(map)
-}
 pub fn list_active_agents_and_daemons(
     uid: &Uid,
     include_system_uids: bool,
-) -> crate::Result<Vec<(String, String, i64, Option<i64>)>> {
-    let mut services = Vec::<(String, String, i64, Option<i64>)>::new();
+) -> crate::Result<Vec<(String, String, i64, Option<i64>, Option<(iocore::Path, plist::Dictionary)>)>>
+{
+    let map = crate::agents_and_daemons_path_map(true, true, true)?;
+
+    let mut services = Vec::new();
     let mut domains = vec![
         agent_or_daemon_prefix(None, false),
         agent_or_daemon_prefix(Some(uid.clone()), false),
@@ -189,16 +179,120 @@ pub fn list_active_agents_and_daemons(
         }
     }
     for domain in domains {
-        for (pid, status, service) in parse_services(&match launchctl_print(&domain) {
-            Ok(services) => services,
-            Err(_) => continue,
-        })? {
-            services.push((domain.to_string(), service.to_string(), pid, status));
+        for (pid, status, service, _enabled) in parse_services(
+            &match launchctl_print(&domain, false) {
+                Ok(services) => services,
+                Err(_) => continue,
+            },
+            false,
+        )? {
+            let path = map.get(&service).map(|h| h.clone());
+            services.push((domain.to_string(), service.to_string(), pid, status, path));
+        }
+    }
+    Ok(services)
+}
+pub fn list_disabled_agents_and_daemons(
+    uid: &Uid,
+    include_system_uids: bool,
+) -> crate::Result<
+    Vec<(
+        String,
+        String,
+        i64,
+        Option<i64>,
+        bool,
+        Option<(iocore::Path, plist::Dictionary)>,
+    )>,
+> {
+    let map = crate::agents_and_daemons_path_map(true, true, true)?;
+    let mut services = Vec::new();
+    let mut domains = vec![
+        agent_or_daemon_prefix(None, false),
+        agent_or_daemon_prefix(Some(uid.clone()), false),
+        agent_or_daemon_prefix(Some(uid.clone()), true),
+    ];
+    if include_system_uids {
+        for suid in crate::salient_system_uids() {
+            domains.push(agent_or_daemon_prefix(Some(suid.clone()), false));
+            domains.push(agent_or_daemon_prefix(Some(suid.clone()), true));
+        }
+    }
+    for domain in domains {
+        for (pid, status, service, enabled) in parse_services(
+            &match launchctl_print(&domain, true) {
+                Ok(services) => services,
+                Err(_) => continue,
+            },
+            true,
+        )? {
+            let path = map.get(&service).map(|h| h.clone());
+            services.push((domain.to_string(), service.to_string(), pid, status, enabled, path));
         }
     }
     Ok(services)
 }
 
+pub fn list_all_agents_and_daemons(
+    uid: &Uid,
+) -> crate::Result<
+    Vec<(
+        String,
+        String,
+        i64,
+        Option<i64>,
+        bool,
+        Option<(iocore::Path, plist::Dictionary)>,
+    )>,
+> {
+    let mut result = std::collections::BTreeMap::<
+        String,
+        (
+            String,
+            String,
+            i64,
+            Option<i64>,
+            bool,
+            Option<(iocore::Path, plist::Dictionary)>,
+        ),
+    >::new();
+    for (domain, service, pid, status, info) in list_active_agents_and_daemons(uid, true)? {
+        result.insert(
+            format!("{}/{}", &domain, &service),
+            (
+                domain.to_string(),
+                service.to_string(),
+                pid.clone(),
+                status.clone(),
+                true,
+                info.clone(),
+            ),
+        );
+    }
+    for (domain, service, pid, status, enabled, info) in
+        list_disabled_agents_and_daemons(uid, true)?
+    {
+        result.insert(
+            format!("{}/{}", &domain, &service),
+            (
+                domain.to_string(),
+                service.to_string(),
+                pid.clone(),
+                status.clone(),
+                enabled,
+                info.clone(),
+            ),
+        );
+    }
+    Ok(result.values().map(|h| h.clone()).collect::<Vec<(
+        String,
+        String,
+        i64,
+        Option<i64>,
+        bool,
+        Option<(iocore::Path, plist::Dictionary)>,
+    )>>())
+}
 #[cfg(test)]
 mod tests {
     use crate::{agent_or_daemon, agent_or_daemon_prefix, Uid};

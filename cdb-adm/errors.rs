@@ -14,6 +14,9 @@ pub enum Error {
     TomlError(String),
     CoreDataError(String),
     ParseError(String),
+    SystemError(String),
+    ConfigurationError(String),
+    SettingsError(String),
 }
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -32,6 +35,9 @@ impl Display for Error {
                 Self::TomlError(e) => e.to_string(),
                 Self::CoreDataError(e) => e.to_string(),
                 Self::ParseError(e) => e.to_string(),
+                Self::SystemError(e) => e.to_string(),
+                Self::ConfigurationError(e) => e.to_string(),
+                Self::SettingsError(e) => e.to_string(),
             }
         )
     }
@@ -50,6 +56,9 @@ impl Error {
             Error::TomlError(_) => "TomlError",
             Error::CoreDataError(_) => "CoreDataError",
             Error::ParseError(_) => "ParseError",
+            Error::SystemError(_) => "SystemError",
+            Error::ConfigurationError(_) => "ConfigurationError",
+            Error::SettingsError(_) => "SettingsError",
         }
         .to_string()
     }

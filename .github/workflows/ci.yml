@@ -47,16 +47,19 @@ jobs:
         run: mkdir -p exports-${{ matrix.toolchain }}-{adm,cdb}
 
       - name: cdb export
-        run: sudo cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export.json
+        run: cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export.json
 
       - name: cdb export
-        run: sudo cdb fix
+        run: cdb fix
 
       - name: cdb export postfix
-        run: sudo cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export-postfix.json
+        run: cdb export | tee -a exports-${{ matrix.toolchain }}-cdb/export-postfix.json
 
-      - name: cdb
-        run: sudo adm turn-off -i
+      - name: adm turn-off
+        run: adm turn-off -viu
+
+      - name: adm status
+        run: adm status
 
       - name: upload artifacts
         uses: actions/upload-artifact@v4
