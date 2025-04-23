@@ -10,7 +10,6 @@
     "com.apple.betaenrollmentd",
     "com.apple.businessservicesd",
     "com.apple.contacts.donation-agent",
-    "com.apple.corebrightnessd",
     "com.apple.corecaptured",
     "com.apple.countryd",
     "com.apple.financed",
@@ -358,4 +357,5 @@
     // // "com.apple.aslmanager", // Kernel Log Description
     // // "com.apple.alf", // application firewall
     // // "com.apple.cvmsServ", //CPU OpenGL Shader Compilation
+    // // "com.apple.corebrightnessd",
 ]
