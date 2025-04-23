@@ -73,14 +73,14 @@
     // </A.I.>
 
     // // <mobile>
-    // "com.apple.mobile.NRDUpdated",
-    // "com.apple.mobile.keybagd",
-    // "com.apple.mobile.notification_proxy",
-    // "com.apple.mobile.obliteration",
-    // "com.apple.mobile.softwareupdated",
-    // "com.apple.mobile.storage_mounter",
-    // "com.apple.mobile.storage_mounter_proxy",
-    // "com.apple.mobile.usermanagerd",
+    "com.apple.mobile.NRDUpdated",
+    "com.apple.mobile.keybagd",
+    "com.apple.mobile.notification_proxy",
+    "com.apple.mobile.obliteration",
+    "com.apple.mobile.softwareupdated",
+    "com.apple.mobile.storage_mounter",
+    "com.apple.mobile.storage_mounter_proxy",
+    "com.apple.mobile.usermanagerd",
     // "com.apple.MobileFileIntegrity",
     // "com.apple.mobileactivationd",
     // "com.apple.mobileassetd",
