@@ -13,7 +13,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 261] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 116] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off_smart(
@@ -58,21 +58,40 @@ pub fn turn_off_smart(
             println!("ok");
         }
     }
+    use iocore::Path;
     for (domain, service, pid) in services_to_turn_off {
+        let log_base_path = Path::cwd().join("logs").join(service.as_str()).join(domain.replace("/", "-"));
+        log_base_path.join("launchd.0.log").write(&Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read_bytes().unwrap()).unwrap();
         match bootout_disable_and_kill_smart(uid, &domain, &service) {
             Ok(_) => {
                 if !quiet {
                     println!("{}/{} ({}) turned off", &domain, &service, pid);
                 }
-                match test_osx_app_opens() {
-                    Ok(_) => {},
-                    Err(error) => {
-                        eprintln!("\n----------------------------------------------------------");
-                        eprintln!("app does not open: {}", error);
-                        eprintln!("----------------------------------------------------------\n");
-                        std::process::exit(3);
-                    },
-                }
+                let launchd_log = Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read().unwrap();
+                log_base_path.join("launchd.1.log").write(launchd_log.as_bytes()).unwrap();
+
+                // if launchd_log.contains("failed lookup: name = com.apple.modelmanager") {
+                //     eprintln!("\n------------------------------------------------------------------------------------------------");
+                //     eprintln!("launchd error detected, check {:#?}", log_base_path.to_string());
+                //     eprintln!("\n------------------------------------------------------------------------------------------------");
+                //     std::process::exit(1);
+                // }
+                // <Notice>: Last log repeated 1 times
+                // (system) <Warning>: failed lookup: name = com.apple.modelmanager, requestor = coreaudiod[418], error = 3: No such process
+                // (system) <Warning>: failed lookup: name = com.apple.BTAudioHALPlugin.xpc, requestor = coreaudiod[418], error = 3: No such process
+                // println!("[enter]");
+                // std::io::stdin().read_line(&mut String::new()).unwrap();
+
+                // match test_osx_app_opens() {
+                //     Ok(_) => {},
+                //     Err(error) => {
+
+                //         eprintln!("\n----------------------------------------------------------");
+                //         eprintln!("app does not open: {}", error);
+                //         eprintln!("----------------------------------------------------------\n");
+                //         std::process::exit(3);
+                //     },
+                // }
             },
             Err(error) =>
                 if !quiet {
@@ -187,10 +206,10 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
 }
 
 pub fn test_osx_app_opens() -> crate::Result<bool> {
-    let app_name = "/Applications/TestFlight.app";
-    let cli_name = "(TestFlight|test-?flight)";
+    let app_name = "Firefox.app";
+    let cli_name = "firefox";
     use std::process::{Command, Stdio};
-    let mut cmd = Command::new("open");
+    let mut cmd = Command::new("/usr/bin/open");
     let cmd = cmd.current_dir(".");
     let cmd = cmd.args(crate::to_slice_str!(vec![format!("/Applications/{}", app_name)]));
     let cmd = cmd.stdin(Stdio::null());
@@ -198,6 +217,7 @@ pub fn test_osx_app_opens() -> crate::Result<bool> {
     let cmd = cmd.stderr(Stdio::piped());
     let child = cmd.spawn()?;
     let output = child.wait_with_output()?;
+
     let exit_code: i64 = output.status.code().unwrap_or_default().into();
     if exit_code == 0 {
         let timeout = std::time::Duration::from_secs(10);
@@ -222,7 +242,9 @@ pub fn test_osx_app_opens() -> crate::Result<bool> {
             })?;
         Ok(true)
     } else {
-        Err(crate::Error::IOError(format!("{} does not open", &app_name)))
+        let out = String::from_utf8(output.stdout).unwrap();
+        let err = String::from_utf8(output.stderr).unwrap();
+        Err(crate::Error::IOError(format!("{} does not open({}):\n<stdout>{}</stdout>\n<stderr>{}</stderr>", &app_name, exit_code, out, err)))
     }
 }
 
