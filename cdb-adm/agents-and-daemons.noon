@@ -83,9 +83,8 @@
     "com.apple.mobile.usermanagerd",
     // "com.apple.MobileFileIntegrity",
     // "com.apple.mobileactivationd",
-    // "com.apple.mobileassetd",
-    // "com.apple.mobilegestalt.xpc",
-    // "com.apple.mobiletimerd",
+    "com.apple.mobileassetd", // OTA, firmware, dictionaries, fonts etc
+    "com.apple.mobiletimerd",
     // // </mobile>
 
     // <bluetooth>
@@ -223,6 +222,8 @@
     "com.apple.mbproximityhelper",
     "com.apple.mediaanalysisd",
     "com.apple.mediaremoted",
+    "com.apple.amsaccountsd", // Apple Media Services
+    "com.apple.amsengagementd",// Apple Media Services
     "com.apple.metadata.mds",
     "com.apple.metadata.mds.index",
     "com.apple.newsd",
@@ -307,9 +308,7 @@
     // // "com.apple.RapportUIAgent",
     // // "com.apple.ScriptMenuApp",
     // "com.apple.SpacesTouchBarAgent.app",
-    // // "com.apple.StatusKitAgent",
-    // // "com.apple.amsaccountsd",
-    // // "com.apple.amsengagementd",
+    "com.apple.StatusKitAgent", // CloudKitMirroring
     // // "com.apple.aned",
     // // "com.apple.aneuserd",
     "com.apple.ap.adprivacyd",
@@ -322,9 +321,9 @@
     "com.apple.applespell",
     "com.apple.applessdstatistics",
     "com.apple.milod", // man milod: nonsense
+    // // "com.apple.mobilegestalt.xpc", // https://newosxbook.com/articles/guesstalt.html
     // // "com.apple.neagent", // network extensions agent
     // // "com.apple.nehelper", // network extensions helper
-    // // "com.apple.appleaccountd",
     // // "com.apple.signpost.signpost_reporter",
     // // "com.apple.powerchime",
     // // "com.apple.fseventsd",

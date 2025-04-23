@@ -13,7 +13,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 281] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 286] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off_smart(
