@@ -13,7 +13,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 116] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 123] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off_smart(
@@ -169,7 +169,14 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
             }
             for name in &services_set {
                 if service.as_str() == name.as_str() {
-                    return info.is_some();
+                    return true;
+                } else if service.as_str().contains(name.as_str()) {
+                    return true;
+                } else if name.as_str().contains(service.as_str()) {
+                    eprintln!("--------------------------------------------------------------------------------");
+                    eprintln!("[info] given service name {:#?} contains actual service name {:#?}", name.as_str(), service.as_str());
+                    eprintln!("--------------------------------------------------------------------------------");
+                    return true;
                 }
             }
             if !quiet {
@@ -184,7 +191,7 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
 
     if !services_to_boot_up.is_empty() {
         if !quiet {
-            println!("turning off services");
+            println!("booting-up services");
         }
     } else {
         if !quiet {
@@ -195,7 +202,7 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
         match enable_and_kickstart_smart(uid, &domain, &service, &path) {
             Ok(_) =>
                 if !quiet {
-                    println!("{}/{} ({}) turned off", &domain, &service, pid);
+                    println!("{}/{} ({}) booted-up", &domain, &service, pid);
                 },
             Err(error) =>
                 if !quiet {

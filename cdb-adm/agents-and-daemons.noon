@@ -1,15 +1,15 @@
 [
-    // // // //<check disable>
+    //<check disable>
     "com.apple.cmio.AVCAssistant",
-    // "com.apple.noticeboard",
+    "com.apple.noticeboard",
     "com.apple.coreservices.useractivityd",
     "com.apple.BTServer.le.agent",
-    // "com.apple.akd",
+    "com.apple.akd",
     "com.apple.appinstalld",
     "com.apple.appstoreagent",
     "com.apple.betaenrollmentd",
     "com.apple.businessservicesd",
-    // "com.apple.contacts.donation-agent",
+    "com.apple.contacts.donation-agent",
     "com.apple.corebrightnessd",
     "com.apple.corecaptured",
     "com.apple.countryd",
@@ -25,11 +25,11 @@
     "com.apple.protectedcloudstorage.protectedcloudkeysyncing",
     "com.apple.rapportd",
     "com.apple.appstored",
-    // "com.apple.metadata.mdbulkimport",
-    // "com.apple.ecosystemanalyticsd",
-    // "com.apple.oahd",
-    // "com.apple.oahd-root-helper",
-    // // // "com.apple.appleaccountd",
+    "com.apple.metadata.mdbulkimport",
+    "com.apple.ecosystemanalyticsd",
+    "com.apple.oahd",
+    "com.apple.oahd-root-helper",
+    // "com.apple.appleaccountd",
     // // // </check disable>
     "com.apple.bluetoothd",
     // <A.I.>
