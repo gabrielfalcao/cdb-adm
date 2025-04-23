@@ -1,9 +1,8 @@
 use std::fmt::Alignment::{Left, Right};
 
 use cdb_adm::{
-    boot_up_smart, list_agents_and_daemons, list_agents_and_daemons_paths,
-    list_all_agents_and_daemons, spctl_global_disable, turn_off_mdutil, turn_off_smart, Result,
-    Uid,
+    boot_up_smart, list_agents_and_daemons, list_all_agents_and_daemons, spctl_global_disable,
+    turn_off_mdutil, turn_off_smart, Result, Uid,
 };
 use clap::{Args, Parser, Subcommand};
 use verynicetable::Table;
@@ -18,6 +17,7 @@ pub struct Cli {
 #[derive(Subcommand, Debug)]
 pub enum Command {
     List(List),
+    Path(Path),
     TurnOff(TurnOff),
     BootUp(BootUp),
     Status(Status),
@@ -72,20 +72,13 @@ pub struct List {
     #[arg(short, long, default_value = "501")]
     pub uid: Option<Uid>,
 
-    #[arg(long)]
-    pub system: bool,
-
-    #[arg(short, long)]
-    pub verbose: bool,
-
-    #[arg(short, long)]
-    pub qualified: bool,
-
     #[arg(short, long)]
     pub path: bool,
-
-    #[arg(short, long)]
-    pub gui: bool,
+}
+#[derive(Args, Debug)]
+pub struct Path {
+    #[arg()]
+    pub label: String,
 }
 #[derive(Args, Debug)]
 pub struct Status {
@@ -99,24 +92,23 @@ pub struct Status {
 fn main() -> Result<()> {
     let args = Cli::parse();
     match args.command {
-        Command::List(op) =>
-            for agent_or_daemon in if op.path {
-                list_agents_and_daemons_paths(true, true, op.system)?
-                    .iter()
-                    .map(|path| path.to_string())
-                    .collect::<Vec<String>>()
-            } else {
-                list_agents_and_daemons(
-                    op.uid.clone(),
-                    op.gui,
-                    op.qualified,
-                    true,
-                    true,
-                    op.system,
-                    !op.verbose,
-                )?
-            } {
-                println!("{}", &agent_or_daemon);
+        Command::List(op) => {
+            let data = list_agents_and_daemons()?
+                .iter()
+                .map(|(label, path)| vec![label.to_string(), path.to_string()])
+                .collect::<Vec<Vec<String>>>();
+            let table = Table::new()
+                .headers(&["SERVICE", "PATH"])
+                .alignments(&[Left, Left])
+                .data(&data)
+                .to_string();
+            print!("{table}");
+        },
+        Command::Path(op) =>
+            for (label, path) in list_agents_and_daemons()? {
+                if label.as_str() == op.label.as_str() {
+                    println!("{}", path.to_string());
+                }
             },
         Command::Status(op) => {
             let uid = Uid::from(iocore::User::id()?.uid);
@@ -149,7 +141,7 @@ fn main() -> Result<()> {
                     .collect::<Vec<Vec<String>>>();
                 let table = Table::new()
                     .headers(&["SERVICE", "PID", "DOMAIN", "STATUS"])
-                    .alignments(&[Left, Left, Right, Left, ])
+                    .alignments(&[Left, Left, Right, Left])
                     .data(&ads)
                     .to_string();
 

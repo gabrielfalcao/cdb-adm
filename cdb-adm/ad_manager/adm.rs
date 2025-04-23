@@ -56,41 +56,13 @@ impl From<u32> for Uid {
     }
 }
 
-pub fn list_agents_and_daemons(
-    uid: Option<Uid>,
-    with_qualifier: bool,
-    user: bool,
-    gui: bool,
-    library: bool,
-    system: bool,
-    quiet: bool,
-) -> crate::Result<Vec<String>> {
-    let uid = uid.unwrap_or_default();
+pub fn list_agents_and_daemons() -> crate::Result<Vec<(String, iocore::Path)>> {
     use iocore::Path;
-    let mut agents_and_daemons = Vec::<String>::new();
+    let mut agents_and_daemons = Vec::new();
 
-    for path in list_agents_and_daemons_paths(user, library, system)? {
-        let prefix = if path.to_string().starts_with("/System") {
-            format!("system")
-        } else if gui {
-            format!("gui/{}", &uid)
-        } else {
-            format!("user/{}", &uid)
-        };
-        let label = match determine_agent_or_daemon_label(&Path::raw(&path)) {
-            Ok(label) => label,
-            Err(error) => {
-                if !quiet {
-                    eprintln!("\x1b[1;38;5;220m{} skipped: {}\x1b[0m", &path, error.to_string());
-                }
-                continue;
-            },
-        };
-        if with_qualifier {
-            agents_and_daemons.push(format!("{}/{}", prefix, label));
-        } else {
-            agents_and_daemons.push(label);
-        }
+    for path in list_agents_and_daemons_paths(true, true, true)? {
+        let label = determine_agent_or_daemon_label(&Path::raw(&path))?;
+        agents_and_daemons.push((label, path.clone()));
     }
     Ok(agents_and_daemons)
 }
