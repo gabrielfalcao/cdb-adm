@@ -22,14 +22,20 @@ pub fn turn_off_smart(
     services: Vec<String>,
     include_non_needed: bool,
     include_system_uids: bool,
+    log: bool
 ) {
     let active_agents_and_daemons = list_active_agents_and_daemons(uid, include_system_uids)
         .expect("active agents and daemons list");
-    let ads_to_turn_off =
-        agents_and_daemons_to_turn_off(services, include_non_needed, active_agents_and_daemons);
-    turn_off_agents_and_daemons(uid, quiet, ads_to_turn_off);
+    let ads_to_turn_off = agents_and_daemons_to_turn_off(
+        quiet,
+        services,
+        include_non_needed,
+        active_agents_and_daemons,
+    );
+    turn_off_agents_and_daemons(uid, quiet, ads_to_turn_off, log);
 }
 pub fn agents_and_daemons_to_turn_off(
+    quiet: bool,
     services: Vec<String>,
     include_non_needed: bool,
     active_agents_and_daemons: Vec<(
@@ -55,9 +61,11 @@ pub fn agents_and_daemons_to_turn_off(
                 } else if service.as_str().contains(name.as_str()) {
                     return true;
                 } else if name.as_str().contains(service.as_str()) {
-                    eprintln!("--------------------------------------------------------------------------------");
-                    eprintln!("[info] given service name {:#?} contains actual service name {:#?}", name.as_str(), service.as_str());
-                    eprintln!("--------------------------------------------------------------------------------");
+                    if !quiet {
+                        eprintln!("--------------------------------------------------------------------------------");
+                        eprintln!("[info] given service name {:#?} contains actual service name {:#?}", name.as_str(), service.as_str());
+                        eprintln!("--------------------------------------------------------------------------------");
+                    }
                     return true;
                 }
             }
@@ -73,6 +81,7 @@ pub fn turn_off_agents_and_daemons(
     uid: &Uid,
     quiet: bool,
     agents_and_daemons_to_turn_off: Vec<(String, String, i64)>,
+    log: bool,
 ) {
     if !agents_and_daemons_to_turn_off.is_empty() {
         if !quiet {
@@ -87,22 +96,28 @@ pub fn turn_off_agents_and_daemons(
     for (domain, service, pid) in agents_and_daemons_to_turn_off {
         let log_base_path =
             Path::cwd().join("logs").join(service.as_str()).join(domain.replace("/", "-"));
-        log_base_path
-            .join("launchd.0.log")
-            .write(
-                &Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log")
-                    .read_bytes()
-                    .unwrap(),
-            )
-            .unwrap();
+        if log {
+            log_base_path
+                .join("launchd.0.log")
+                .write(
+                    &Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log")
+                        .read_bytes()
+                        .unwrap(),
+                )
+                .unwrap();
+        }
         match bootout_disable_and_kill_smart(uid, &domain, &service) {
             Ok(_) => {
                 if !quiet {
                     println!("{}/{} ({}) turned off", &domain, &service, pid);
                 }
-                let launchd_log =
-                    Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read().unwrap();
-                log_base_path.join("launchd.1.log").write(launchd_log.as_bytes()).unwrap();
+                if log {
+                    let launchd_log =
+                        Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log")
+                            .read()
+                            .unwrap();
+                    log_base_path.join("launchd.1.log").write(launchd_log.as_bytes()).unwrap();
+                }
 
                 // if launchd_log.contains("failed lookup: name = com.apple.modelmanager") {
                 //     eprintln!("\n------------------------------------------------------------------------------------------------");

@@ -72,6 +72,7 @@ impl ArgsDispatcher<Error> for TurnOff {
             self.services.clone(),
             self.include_non_needed,
             self.include_system_uids,
+            true
         );
 
         Ok(())
