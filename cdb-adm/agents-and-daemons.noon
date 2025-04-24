@@ -309,7 +309,7 @@
     // "com.apple.PowerUIAgent",
     // // "com.apple.RapportUIAgent",
     // // "com.apple.ScriptMenuApp",
-    // "com.apple.SpacesTouchBarAgent.app",
+    "com.apple.SpacesTouchBarAgent.app",
     "com.apple.StatusKitAgent", // CloudKitMirroring
     // // "com.apple.aned",
     // // "com.apple.aneuserd",

@@ -13,7 +13,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 296] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 297] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off_smart(
@@ -142,10 +142,16 @@ pub fn turn_off_agents_and_daemons(
                 //     },
                 // }
             },
-            Err(error) =>
-                if !quiet {
-                    eprintln!("{}", error)
-                },
+            Err(error) => match disable_and_kill_smart(uid, &domain, &service) {
+                Ok(_) =>
+                    if !quiet {
+                        println!("{}/{} ({}) disabled", &domain, &service, pid);
+                    },
+                Err(_) =>
+                    if !quiet {
+                        eprintln!("{}", error)
+                    },
+            },
         }
     }
 }
@@ -186,7 +192,25 @@ fn bootout_disable_and_kill_smart(
     Ok(())
 }
 
-#[rustfmt::skip]
+fn disable_and_kill_smart(uid: &Uid, domain: &str, service: &str) -> crate::Result<()> {
+    let as_root = !domain.ends_with(&uid.to_string());
+    let services_target = format!("{}/{}", domain, service);
+    launchctl_subcommand(
+        crate::to_slice_str!(vec!["disable".to_string(), services_target.to_string()]),
+        as_root,
+    )?;
+    launchctl_subcommand(
+        crate::to_slice_str!(vec![
+            "kill".to_string(),
+            "9".to_string(),
+            services_target.to_string()
+        ]),
+        as_root,
+    )
+    .unwrap_or_default();
+    Ok(())
+}
+
 fn enable_and_kickstart_smart(
     domain: &str,
     service: &str,
