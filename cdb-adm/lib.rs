@@ -1,6 +1,8 @@
 mod errors;
 pub use errors::{Error, Result};
 
+pub mod cli;
+pub use cli::{adb,cdb};
 mod settings;
 pub use settings::{ADMSettings, CDBSettings, Settings, SettingsEnvPath};
 mod md;
