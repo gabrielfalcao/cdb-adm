@@ -13,7 +13,7 @@ pub use launchctl::{
 };
 pub use parser::{extract_service_info_opt, extract_service_name, parse_services};
 
-pub const NON_NEEDED_SERVICES: [&'static str; 286] = include!("agents-and-daemons.noon");
+pub const NON_NEEDED_SERVICES: [&'static str; 296] = include!("agents-and-daemons.noon");
 pub const BOOTOUT_SERVICES: [&'static str; 56] = include!("bootout.noon");
 
 pub fn turn_off_smart(
@@ -21,17 +21,17 @@ pub fn turn_off_smart(
     quiet: bool,
     services: Vec<String>,
     include_non_needed: bool,
-    include_system_uids: bool,
-    log: bool
+    log: bool,
 ) {
-    let active_agents_and_daemons = list_active_agents_and_daemons(uid, include_system_uids)
-        .expect("active agents and daemons list");
-    let ads_to_turn_off = agents_and_daemons_to_turn_off(
-        quiet,
-        services,
-        include_non_needed,
-        active_agents_and_daemons,
-    );
+    let all_agents_and_daemons = list_all_agents_and_daemons(uid)
+        .expect("active agents and daemons list")
+        .iter()
+        .map(|(domain, service, pid, status, _, info)| {
+            (domain.clone(), service.clone(), pid.clone(), status.clone(), info.clone())
+        })
+        .collect();
+    let ads_to_turn_off =
+        agents_and_daemons_to_turn_off(quiet, services, include_non_needed, all_agents_and_daemons);
     turn_off_agents_and_daemons(uid, quiet, ads_to_turn_off, log);
 }
 pub fn agents_and_daemons_to_turn_off(
@@ -188,15 +188,21 @@ fn bootout_disable_and_kill_smart(
 
 #[rustfmt::skip]
 fn enable_and_kickstart_smart(
-    uid: &Uid,
     domain: &str,
     service: &str,
     path: &iocore::Path,
 ) -> crate::Result<()> {
-    let as_root = !domain.ends_with(&uid.to_string());
+    let as_root = true;
     let services_target = format!("{}/{}", domain, service);
-    launchctl_subcommand(crate::to_slice_str!(vec!["enable".to_string(), services_target.to_string()]), as_root)?;
-    launchctl_subcommand(crate::to_slice_str!(vec!["bootstrap".to_string(), services_target.to_string(), path.to_string()]), as_root)?;
+    let commands = vec![
+        vec!["bootstrap".to_string(), domain.to_string(), path.to_string()],
+        vec!["enable".to_string(), services_target.to_string()],
+        vec!["kickstart".to_string(), "-k".to_string(), services_target.to_string()],
+    ];
+    for command in commands {
+        eprintln!("{} -", command.join(" "));
+        launchctl_subcommand(crate::to_slice_str!(command), as_root)?;
+    }
     Ok(())
 }
 
@@ -228,9 +234,6 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
                     return true;
                 }
             }
-            if !quiet {
-                eprintln!("[warning] no matches for service {:#?}", &service);
-            }
             false
         })
         .map(|(domain, service, pid, _, _, info)| {
@@ -248,7 +251,7 @@ pub fn boot_up_smart(uid: &Uid, quiet: bool, services: Vec<String>, include_non_
         }
     }
     for (domain, service, pid, (path, _)) in services_to_boot_up {
-        match enable_and_kickstart_smart(uid, &domain, &service, &path) {
+        match enable_and_kickstart_smart(&domain, &service, &path) {
             Ok(_) =>
                 if !quiet {
                     println!("{}/{} ({}) booted-up", &domain, &service, pid);

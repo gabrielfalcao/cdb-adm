@@ -86,7 +86,6 @@
     "com.apple.mobileassetd", // OTA, firmware, dictionaries, fonts etc
     "com.apple.mobiletimerd",
     // // </mobile>
-
     // <bluetooth>
     "com.apple.BTAudioHALPlugin",
     "com.apple.BTAudioHALPlugin.xpc",
@@ -103,16 +102,12 @@
     "com.apple.NetworkSharing",
     "com.apple.RemotePairTool",
     // </bluetooth>
-
-
     // <_fpsd group>
     "com.apple.adid",
     "com.apple.lskdd",
     "com.apple.fairplayd",
     "com.apple.fairplaydeviceidentityd",
     // </_fpsd group>
-
-
     // <accessibility>
     "com.apple.AccessibilityVis",
     "com.apple.AccessibilityVisualsAgent",
@@ -128,7 +123,6 @@
     "com.apple.universalaccesscontrol",
     "com.apple.universalaccessd",
     // </accessibility>
-
     // <social&games>
     "com.apple.AddressBook.AssistantService",
     "com.apple.AddressBook.SourceSync",
@@ -155,7 +149,6 @@
     "com.apple.GamePolicyAgent",
     "com.apple.gamepolicyd",
     // </social&games>
-
     "com.apple.ScreenTimeAgent",
     "com.apple.CoreLocationAgent",
     "com.apple.ManagedClient",
@@ -178,8 +171,11 @@
     "com.apple.SecureBackupDaemon",
     "com.apple.SoftwareUpdateNotificationManager",
     // "com.apple.Spotlight",
+    "com.apple.AppStoreDaemon.StorePrivilegedODRService",
     "com.apple.UsageTrackingAgent",
     "com.apple.amp.mediasharingd",
+    "com.apple.amsaccountsd", // Apple Media Services
+    "com.apple.amsengagementd",// Apple Media Services
     "com.apple.backupd",
     "com.apple.backupd-helper",
     "com.apple.cameracaptured",
@@ -222,10 +218,9 @@
     "com.apple.mbproximityhelper",
     "com.apple.mediaanalysisd",
     "com.apple.mediaremoted",
-    "com.apple.amsaccountsd", // Apple Media Services
-    "com.apple.amsengagementd",// Apple Media Services
     "com.apple.metadata.mds",
     "com.apple.metadata.mds.index",
+    "com.apple.mobileassetd",
     "com.apple.newsd",
     "com.apple.nfcd",
     "com.apple.nfsconf",
@@ -295,11 +290,18 @@
     "com.apple.weatherd",
     "com.apple.webinspectord",
     "com.apple.xpc.otherbsd",
-    "com.openssh.sshd",
+    "com.google.GoogleUpdater.wake",
+    "com.google.keystone.user.agent",
+    "com.google.keystone.user.xpcservice",
     "com.openssh.ssh-agent",
+    "com.openssh.sshd",
+    "application.com.google.Chrome.34217027.115757586",
+    "at.obdev.littlesnitch.agent",
+    "at.obdev.littlesnitch.daemon",
+    "homebrew.mxcl.colima",
     "org.apache.httpd",
     "org.cups.cups-lpd",
-    // // "com.apple.AppStoreDaemon.StorePrivilegedODRService",
+    "org.xquartz.privileged_startx",
     // // "com.apple.MENotificationService",
     // // "com.apple.OSDUIHelper",
     // "com.apple.PerfPowerServices",

@@ -33,7 +33,7 @@ doc = false
 [dependencies]
 clap = { version = "4.5.35", features = ["derive", "env", "string", "unicode", "wrap_help"] }
 hex = "0.4.3"
-iocore = "2.2.2"
+iocore = "2.3.0"
 iocore-test = { path = "../iocore/iocore-test"}
 plist = "1.7.1"
 regex = "1.11.1"
