@@ -45,25 +45,22 @@ impl SubcommandDispatcher<Error> for Command {
 #[derive(Args, Debug)]
 pub struct TurnOff {
     #[arg()]
-    services: Vec<String>,
+    pub services: Vec<String>,
 
     #[arg(long, default_value = "501")]
-    uid: Uid,
+    pub uid: Uid,
 
     #[arg(short, long)]
-    verbose: bool,
+    pub verbose: bool,
 
     #[arg(short, long)]
-    display_warnings: bool,
+    pub display_warnings: bool,
 
     #[arg(short, long)]
-    include_non_needed: bool,
+    pub include_non_needed: bool,
 
     #[arg(short = 'u', long)]
-    include_system_uids: bool,
-
-    #[arg(long)]
-    pub gui: bool,
+    pub include_system_uids: bool,
 }
 impl ArgsDispatcher<Error> for TurnOff {
     fn dispatch(&self) -> Result<()> {
@@ -84,22 +81,19 @@ impl ArgsDispatcher<Error> for TurnOff {
 #[derive(Args, Debug)]
 pub struct BootUp {
     #[arg()]
-    services: Vec<String>,
+    pub services: Vec<String>,
 
     #[arg(long, default_value = "501")]
-    uid: Uid,
+    pub uid: Uid,
 
     #[arg(short, long)]
-    quiet: bool,
+    pub quiet: bool,
 
     #[arg(short, long)]
-    display_warnings: bool,
+    pub display_warnings: bool,
 
     #[arg(short, long)]
-    include_non_needed: bool,
-
-    #[arg(long)]
-    pub gui: bool,
+    pub include_non_needed: bool,
 }
 impl ArgsDispatcher<Error> for BootUp {
     fn dispatch(&self) -> Result<()> {

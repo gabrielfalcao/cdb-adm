@@ -43,10 +43,10 @@ impl SubcommandDispatcher<Error> for Command {
 #[derive(Args, Debug)]
 pub struct Fix {
     #[arg(short, long)]
-    quiet: bool,
+    pub quiet: bool,
 
     #[arg(short, long)]
-    dry_run: bool,
+    pub dry_run: bool,
 }
 impl ArgsDispatcher<Error> for Fix {
     fn dispatch(&self) -> Result<()> {
@@ -58,16 +58,16 @@ impl ArgsDispatcher<Error> for Fix {
 #[derive(Args, Debug)]
 pub struct Export {
     #[arg()]
-    domains: Vec<String>,
+    pub domains: Vec<String>,
 
     #[arg(short, long)]
-    no_global: bool,
+    pub no_global: bool,
 
     #[arg(short, long)]
-    library_preferences: bool,
+    pub library_preferences: bool,
 
     #[arg(short, long)]
-    output_path: Option<Path>,
+    pub output_path: Option<Path>,
 }
 impl ArgsDispatcher<Error> for Export {
     fn dispatch(&self) -> Result<()> {
@@ -110,10 +110,10 @@ impl ArgsDispatcher<Error> for List {
 #[derive(Args, Debug)]
 pub struct Delete {
     #[arg()]
-    domains: Vec<String>,
+    pub domains: Vec<String>,
 
     #[arg(short, long)]
-    output_path: Path,
+    pub output_path: Path,
 }
 impl ArgsDispatcher<Error> for Delete {
     fn dispatch(&self) -> Result<()> {
