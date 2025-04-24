@@ -2,7 +2,7 @@ mod errors;
 pub use errors::{Error, Result};
 
 pub mod cli;
-pub use cli::{adb,cdb};
+pub use cli::{adb, cdb};
 mod settings;
 pub use settings::{ADMSettings, CDBSettings, Settings, SettingsEnvPath};
 mod md;
@@ -22,11 +22,11 @@ pub mod ad_manager;
 use std::collections::BTreeSet;
 
 pub use ad_manager::{
-    agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map, boot_up_smart,
-    extract_service_info_opt, extract_service_name, launchctl, launchctl_ok,
-    list_active_agents_and_daemons, list_agents_and_daemons, list_agents_and_daemons_paths,
-    list_all_agents_and_daemons, parse_services, salient_system_uids, system_uids, turn_off_smart,
-    Uid
+    agent_or_daemon, agent_or_daemon_prefix, agents_and_daemons_path_map,
+    agents_and_daemons_to_turn_off, boot_up_smart, extract_service_info_opt, extract_service_name,
+    launchctl, launchctl_ok, list_active_agents_and_daemons, list_agents_and_daemons,
+    list_agents_and_daemons_paths, list_all_agents_and_daemons, parse_services,
+    salient_system_uids, system_uids, turn_off_agents_and_daemons, turn_off_smart, Uid,
 };
 
 pub fn no_doubles(list: &[&str]) -> Vec<String> {

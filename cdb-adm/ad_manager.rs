@@ -23,14 +23,30 @@ pub fn turn_off_smart(
     include_non_needed: bool,
     include_system_uids: bool,
 ) {
+    let active_agents_and_daemons = list_active_agents_and_daemons(uid, include_system_uids)
+        .expect("active agents and daemons list");
+    let ads_to_turn_off =
+        agents_and_daemons_to_turn_off(services, include_non_needed, active_agents_and_daemons);
+    turn_off_agents_and_daemons(uid, quiet, ads_to_turn_off);
+}
+pub fn agents_and_daemons_to_turn_off(
+    services: Vec<String>,
+    include_non_needed: bool,
+    active_agents_and_daemons: Vec<(
+        String,
+        String,
+        i64,
+        Option<i64>,
+        Option<(iocore::Path, plist::Dictionary)>,
+    )>,
+) -> Vec<(String, String, i64)> {
     let mut services_set = Vec::<String>::new();
     if include_non_needed {
         services_set.extend(crate::to_vec_string!(NON_NEEDED_SERVICES));
     }
     services_set.extend(services);
     let services_set = crate::no_doubles(crate::to_slice_str!(services_set));
-    let services_to_turn_off = list_active_agents_and_daemons(uid, include_system_uids)
-        .unwrap()
+    let agents_and_daemons_to_turn_off = active_agents_and_daemons
         .iter()
         .filter(|(_, service, _, _, _)| {
             for name in &services_set {
@@ -49,7 +65,16 @@ pub fn turn_off_smart(
         })
         .map(|(domain, service, pid, _, _)| (domain.to_string(), service.to_string(), *pid))
         .collect::<Vec<(String, String, i64)>>();
-    if !services_to_turn_off.is_empty() {
+
+    agents_and_daemons_to_turn_off
+}
+
+pub fn turn_off_agents_and_daemons(
+    uid: &Uid,
+    quiet: bool,
+    agents_and_daemons_to_turn_off: Vec<(String, String, i64)>,
+) {
+    if !agents_and_daemons_to_turn_off.is_empty() {
         if !quiet {
             println!("turning off services");
         }
@@ -59,15 +84,24 @@ pub fn turn_off_smart(
         }
     }
     use iocore::Path;
-    for (domain, service, pid) in services_to_turn_off {
-        let log_base_path = Path::cwd().join("logs").join(service.as_str()).join(domain.replace("/", "-"));
-        log_base_path.join("launchd.0.log").write(&Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read_bytes().unwrap()).unwrap();
+    for (domain, service, pid) in agents_and_daemons_to_turn_off {
+        let log_base_path =
+            Path::cwd().join("logs").join(service.as_str()).join(domain.replace("/", "-"));
+        log_base_path
+            .join("launchd.0.log")
+            .write(
+                &Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log")
+                    .read_bytes()
+                    .unwrap(),
+            )
+            .unwrap();
         match bootout_disable_and_kill_smart(uid, &domain, &service) {
             Ok(_) => {
                 if !quiet {
                     println!("{}/{} ({}) turned off", &domain, &service, pid);
                 }
-                let launchd_log = Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read().unwrap();
+                let launchd_log =
+                    Path::raw("/private/var/log/com.apple.xpc.launchd/launchd.log").read().unwrap();
                 log_base_path.join("launchd.1.log").write(launchd_log.as_bytes()).unwrap();
 
                 // if launchd_log.contains("failed lookup: name = com.apple.modelmanager") {
@@ -251,7 +285,10 @@ pub fn test_osx_app_opens() -> crate::Result<bool> {
     } else {
         let out = String::from_utf8(output.stdout).unwrap();
         let err = String::from_utf8(output.stderr).unwrap();
-        Err(crate::Error::IOError(format!("{} does not open({}):\n<stdout>{}</stdout>\n<stderr>{}</stderr>", &app_name, exit_code, out, err)))
+        Err(crate::Error::IOError(format!(
+            "{} does not open({}):\n<stdout>{}</stdout>\n<stderr>{}</stderr>",
+            &app_name, exit_code, out, err
+        )))
     }
 }
 
