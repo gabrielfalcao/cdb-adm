@@ -1077,7 +1077,10 @@ mod tests {
 pub fn validate_domain_path_for_current_user(path: impl std::fmt::Display) -> Result<()> {
     use iocore::Path;
     let path = Path::raw(path.to_string()).try_canonicalize();
-    let (_, parts) = path.search_regex("^/Users/(?<user>[^/]+)/")?;
+    if !path.exists() {
+        return Ok(());
+    }
+    let (_, parts) = path.search_regex("^/(?:Users|(?:private/)?var)/(?<user>[^/]+)/")?;
     let user_home_username = parts[0].to_string();
     let current_user = iocore::User::id().unwrap_or_default();
 
@@ -1086,9 +1089,10 @@ pub fn validate_domain_path_for_current_user(path: impl std::fmt::Display) -> Re
             Ok(())
         } else {
             return Err(Error::CoreDataError(format!(
-                "domain file {} does not belong to user {:#?}",
+                "domain file {} does not belong to user {:#?}: {:#?}",
                 path.to_string(),
-                &current_user.name
+                &current_user.name,
+                user_home_username,
             )));
         }
     } else {

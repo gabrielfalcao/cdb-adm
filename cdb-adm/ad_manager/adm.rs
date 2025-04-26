@@ -88,7 +88,7 @@ pub fn list_agents_and_daemons_paths(
         search_paths.push(Path::new("/System/Library/LaunchDaemons"));
     }
 
-    for path in search_paths {
+    for path in search_paths.iter().filter(|h| h.is_directory()) {
         for agent_or_daemon_path in path.list()? {
             if let Some(extension) = agent_or_daemon_path.extension() {
                 if extension == ".plist" {

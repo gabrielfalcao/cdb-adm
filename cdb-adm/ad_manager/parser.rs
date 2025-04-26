@@ -29,8 +29,8 @@ pub fn parse_services(data: &str, disabled: bool) -> Result<Vec<(i64, Option<i64
                     services.push((pid, status, service, enabled));
                 } else {
                     let (pid, status, service) =
-                        extract_service_info_opt(line).ok_or_else(|| {
-                            Error::ParseError(format!("service info not found in ```{}```", line))
+                        extract_service_info_opt(line).map_err(|error| {
+                            Error::ParseError(format!("service info not found in ```{}```: {}", line.trim(), error.to_string()))
                         })?;
                     services.push((pid, status, service, true));
                 }
@@ -42,21 +42,26 @@ pub fn parse_services(data: &str, disabled: bool) -> Result<Vec<(i64, Option<i64
 
 pub fn extract_service_name(line: &str) -> Result<String> {
     let (_, _, service) = extract_service_info_opt(line)
-        .ok_or_else(|| Error::ParseError(format!("service name not found in {:#?}", line)))?;
+        .map_err(|error| Error::ParseError(format!("service name not found in {:#?}: {}", line, error.to_string())))?;
     Ok(service)
 }
 
-pub fn extract_service_info_opt(line: &str) -> Option<(i64, Option<i64>, String)> {
+pub fn extract_service_info_opt(line: &str) -> Result<(i64, Option<i64>, String)> {
     let service_regex =
-        regex::Regex::new("^\\s+(?<pid>\\d+)\\s+(?<status>[0-9-]+)\\s+(?<service>\\S+)").unwrap();
-    let caps = service_regex.captures(line)?;
+        regex::Regex::new("^\\s*(?<pid>\\d+)\\s+(?<status>[0-9-]+|(?:[(]\\w+[)]))\\s+(?<service>\\S+)").unwrap();
+    let caps = match service_regex.captures(line) {
+        Some(caps) => caps,
+        None => {
+            return Err(Error::ParseError(format!("regex {:#?} does not match: {:#?}", service_regex.to_string(), line)));
+        }
+    };
 
-    let pid_s = caps.name("pid")?.as_str().to_string();
-    let status_s = caps.name("status")?.as_str().to_string();
-    let service = caps.name("service")?.as_str().to_string();
-    let pid = i64::from_str_radix(pid_s.as_str(), 10).unwrap();
+    let pid_s = caps.name("pid").expect("pid").as_str().to_string();
+    let status_s = caps.name("status").expect("status").as_str().to_string();
+    let service = caps.name("service").expect("service").as_str().to_string();
+    let pid = i64::from_str_radix(pid_s.as_str(), 10).unwrap_or_default();
     let status = i64::from_str_radix(status_s.as_str(), 10).ok();
-    Some((pid, status, service))
+    Ok((pid, status, service))
 }
 
 pub fn extract_disabled_service_info(line: &str) -> Option<(String, bool)> {

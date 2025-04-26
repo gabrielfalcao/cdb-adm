@@ -61,6 +61,9 @@ pub struct TurnOff {
 
     #[arg(short = 'u', long)]
     pub include_system_uids: bool,
+
+    #[arg(long)]
+    pub logs: bool,
 }
 impl ArgsDispatcher<Error> for TurnOff {
     fn dispatch(&self) -> Result<()> {
@@ -71,7 +74,7 @@ impl ArgsDispatcher<Error> for TurnOff {
             !self.verbose,
             self.services.clone(),
             self.include_non_needed,
-            true
+            self.logs
         );
 
         Ok(())

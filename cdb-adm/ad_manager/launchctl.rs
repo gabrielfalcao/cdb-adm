@@ -256,7 +256,7 @@ pub fn list_all_agents_and_daemons(
             Option<(iocore::Path, plist::Dictionary)>,
         ),
     >::new();
-    for (domain, service, pid, status, info) in list_active_agents_and_daemons(uid, true)? {
+    for (domain, service, pid, status, info) in list_active_agents_and_daemons(uid, true).expect("active agents and daemons") {
         result.insert(
             format!("{}/{}", &domain, &service),
             (
